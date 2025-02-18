@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/Corentin-cott/ServeurSentinel/internal/db"
-	"github.com/Corentin-cott/ServeurSentinel/internal/models"
 )
 
 // This test function is called every time the periodic task is executed
@@ -18,9 +17,6 @@ func CheckActiveServers() {
 	primaryServer, err := db.GetServerById(db.GetPrimaryServerId())
 	if err != nil {
 		fmt.Println("Error while getting the primary server from the database:", err)
-	} else if primaryServer == (models.Server{}) {
-		fmt.Println("No primary server has been found in the database... This may or may be not normal.")
-		return
 	} else {
 		fmt.Println("Primary server found in the database:", primaryServer.Nom)
 	}
@@ -28,9 +24,6 @@ func CheckActiveServers() {
 	secondaryServer, err := db.GetServerById(db.GetSecondaryServerId())
 	if err != nil {
 		fmt.Println("Error while getting the secondary server from the database:", err)
-	} else if secondaryServer == (models.Server{}) {
-		fmt.Println("No secondary server has been found in the database... This may or may be not normal.")
-		return
 	} else {
 		fmt.Println("Secondary server found in the database:", secondaryServer.Nom)
 	}
