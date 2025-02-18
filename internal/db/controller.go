@@ -22,6 +22,7 @@ func ConnectToDatabase() error {
 		config.AppConfig.DB.Name,
 	)
 
+	// Try to connect to the database
 	var err error
 	db, err = sql.Open("mysql", dsn)
 	if err != nil {
@@ -33,7 +34,7 @@ func ConnectToDatabase() error {
 		return fmt.Errorf("ERROR WHILE PINGING DATABASE: %v", err)
 	}
 
-	fmt.Println("Successfully connected to the database.")
+	fmt.Println("✔ Successfully connected to the database.")
 	return nil
 }
 

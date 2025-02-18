@@ -9,6 +9,7 @@ import (
 	"github.com/Corentin-cott/ServeurSentinel/config"
 	"github.com/Corentin-cott/ServeurSentinel/internal/console"
 	"github.com/Corentin-cott/ServeurSentinel/internal/db"
+	periodic "github.com/Corentin-cott/ServeurSentinel/internal/events"
 	"github.com/Corentin-cott/ServeurSentinel/internal/triggers"
 )
 
@@ -28,6 +29,15 @@ func main() {
 		log.Fatalf("FATAL ERROR TESTING DATABASE CONNECTION: %v", err)
 	}
 
+	// Start the periodic service
+	go func() {
+		err := periodic.StartPeriodicTask(config.AppConfig.PeriodicEventsMin)
+		if err != nil {
+			log.Fatalf("FATAL ERROR STARTING PERIODIC TASK: %v", err)
+		}
+	}()
+	fmt.Println("✔ Periodic service started, interval is set to", config.AppConfig.PeriodicEventsMin, "minutes.")
+
 	// Get the list of all the log files
 	logDirPath := "/opt/serversentinel/serverslog/" // Folder containing the log files
 	logFiles, err := filepath.Glob(filepath.Join(logDirPath, "*.log"))
@@ -36,7 +46,7 @@ func main() {
 	}
 
 	if len(logFiles) == 0 {
-		log.Println("No log files found in the directory, did you forget to redirect the logs to the folder ?")
+		log.Println("No log files found in the directory, did you forget to redirect the logs to the folder?")
 		return
 	}
 
