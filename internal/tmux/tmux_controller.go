@@ -1,4 +1,4 @@
-package services
+package tmux
 
 import (
 	"fmt"
@@ -6,11 +6,12 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/Corentin-cott/ServeurSentinel/internal/db"
 	"github.com/Corentin-cott/ServeurSentinel/internal/models"
 )
 
 // Check if a server is currently running in a tmux session
-func CheckServerTmux(serverName string) (bool, error) {
+func IsServerRunning(serverName string) (bool, error) {
 	command := fmt.Sprintf("tmux list-sessions -F '#{session_name}' | grep -w \"%s\" | wc -l", serverName)
 	commandOutput, err := exec.Command("bash", "-c", command).Output()
 	if err != nil {
@@ -25,10 +26,23 @@ func CheckServerTmux(serverName string) (bool, error) {
 	return sessionCount > 0, nil
 }
 
+// Check if a server is supposed to be running
+func IsServerSupposedToBeRunning(serverName string) (bool, error) {
+	server, err := db.GetServerByName(serverName)
+	if err != nil {
+		return false, fmt.Errorf("ERROR WHILE GETTING SERVER BY NAME: %v", err)
+	}
+
+	primaryServerID := db.GetPrimaryServerId()
+	secondaryServerID := db.GetSecondaryServerId()
+
+	return server.ID == primaryServerID || server.ID == secondaryServerID, nil
+}
+
 // StartServerTmux starts a Minecraft server in a tmux session
 func StartServerTmux(sessionID int, server models.Server) error {
 	// Check if the server is already running
-	isRunning, err := CheckServerTmux(server.Nom)
+	isRunning, err := IsServerRunning(server.Nom)
 	if err != nil {
 		return fmt.Errorf("ERROR WHILE CHECKING THE TMUX SESSION: %v", err)
 	}
@@ -36,7 +50,7 @@ func StartServerTmux(sessionID int, server models.Server) error {
 		return fmt.Errorf("SERVER %s IS ALREADY RUNNING", server.Nom)
 	}
 
-	fmt.Println("Starting the tmux session for", server.Nom)
+	fmt.Println("Starting the tmux session for", server.Nom+"...")
 
 	// Extract the main version of Minecraft
 	versionParts := strings.Split(server.Version, ".")
@@ -66,6 +80,50 @@ func StartServerTmux(sessionID int, server models.Server) error {
 
 	fmt.Printf("✔ Server %s started using Java %s\n", server.Nom, javaVersion)
 	return nil
+}
+
+// StopServerTmux stops a Minecraft server in a tmux session
+func StopServerTmux(serverName string) error {
+	// Check if the server is running
+	isRunning, err := IsServerRunning(serverName)
+	if err != nil {
+		return fmt.Errorf("ERROR WHILE CHECKING THE TMUX SESSION: %v", err)
+	}
+	if !isRunning {
+		return fmt.Errorf("SERVER %s IS NOT RUNNING", serverName)
+	}
+
+	fmt.Println("Stopping the tmux session for", serverName+"...")
+
+	// Send the stop command to the tmux session
+	command := fmt.Sprintf("tmux send-keys -t '%s' 'stop' C-m", serverName)
+	err = exec.Command("bash", "-c", command).Run()
+	if err != nil {
+		return fmt.Errorf("ERROR WHILE STOPPING THE TMUX SESSION: %v", err)
+	}
+
+	// Just to be sure, send the exit command to the tmux session
+	command = fmt.Sprintf("tmux send-keys -t '%s' 'exit' C-m", serverName)
+	err = exec.Command("bash", "-c", command).Run()
+	if err != nil {
+		return fmt.Errorf("ERROR WHILE STOPPING THE TMUX SESSION: %v", err)
+	}
+
+	fmt.Printf("✔ Server %s stopped\n", serverName)
+	return nil
+}
+
+// Returns opened tmux sessions
+func GetTmuxSessions() ([]string, error) {
+	commandOutput, err := exec.Command("tmux", "list-sessions", "-F", "#{session_name}").Output()
+	if err != nil {
+		return nil, fmt.Errorf("ERROR WHILE GETTING TMUX SESSIONS: %v", err)
+	}
+
+	// Remove the newline character and split the output into an array
+	sessions := strings.Split(strings.TrimSpace(string(commandOutput)), "\n")
+
+	return sessions, nil
 }
 
 // Returns the appropriate Java version for a given Minecraft version

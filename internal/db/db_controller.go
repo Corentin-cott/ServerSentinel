@@ -202,6 +202,22 @@ func GetServerById(serverID int) (models.Server, error) {
 	return serv, nil
 }
 
+// Getter to get the server by the server name
+func GetServerByName(serverName string) (models.Server, error) {
+	query := "SELECT * FROM serveurs WHERE nom = ?"
+	var serv models.Server
+
+	err := db.QueryRow(query, serverName).Scan(&serv.ID, &serv.Nom, &serv.Jeu, &serv.Version, &serv.Modpack, &serv.ModpackURL, &serv.NomMonde, &serv.EmbedColor, &serv.PathServ, &serv.StartScript, &serv.Actif, &serv.Global)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return serv, fmt.Errorf("SERVER NOT FOUND: %s", serverName)
+		}
+		return serv, fmt.Errorf("FAILED TO GET SERVER: %v", err)
+	}
+
+	return serv, nil
+}
+
 // Getter to get the server game by the server ID
 func GetServerGameById(serverID int) (string, error) {
 	query := "SELECT jeu FROM serveurs WHERE id = ?"
