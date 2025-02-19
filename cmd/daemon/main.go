@@ -5,6 +5,7 @@ import (
 	"log"
 	"path/filepath"
 	"sync"
+	"time"
 
 	"github.com/Corentin-cott/ServeurSentinel/config"
 	"github.com/Corentin-cott/ServeurSentinel/internal/console"
@@ -15,7 +16,7 @@ import (
 
 func main() {
 
-	fmt.Println("Starting the Server Sentinel daemon...")
+	fmt.Println("Starting the Server Sentinel daemon (" + time.Now().Format("02/01/2006 15:04:05") + ") ...")
 
 	// Load the configuration file
 	err := config.LoadConfig("/opt/serversentinel/config.json")
