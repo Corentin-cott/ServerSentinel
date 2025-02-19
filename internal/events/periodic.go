@@ -32,8 +32,7 @@ func CheckActiveServers() string {
 	} else {
 		fmt.Println("Is the correct primary server running:", isPrimaryServerRunning, "("+primaryServer.Nom+")")
 		if !isPrimaryServerRunning {
-			logFile := fmt.Sprintf("/opt/serversentinel/serverslog/%s.log", "primaire")
-			err = services.StartServerTmux(1, primaryServer.Nom, primaryServer.Version, primaryServer.PathServ, primaryServer.StartScript, logFile)
+			err = services.StartServerTmux(1, primaryServer)
 			if err != nil {
 				return fmt.Sprintf("Error while starting the primary server tmux session: %v", err)
 			}
@@ -47,8 +46,7 @@ func CheckActiveServers() string {
 	} else {
 		fmt.Println("Is the correct secondary server running:", isSecondaryServerRunning, "("+secondaryServer.Nom+")")
 		if !isSecondaryServerRunning {
-			logFile := fmt.Sprintf("/opt/serversentinel/serverslog/%s.log", "secondaire")
-			err = services.StartServerTmux(2, secondaryServer.Nom, primaryServer.Version, secondaryServer.PathServ, secondaryServer.StartScript, logFile)
+			err = services.StartServerTmux(2, secondaryServer)
 			if err != nil {
 				return fmt.Sprintf("Error while starting the secondary server tmux session: %v", err)
 			}
@@ -71,7 +69,6 @@ func StartPeriodicTask(PeriodicEventsMin int) error {
 	for range ticker.C {
 		Task()
 		_ = CheckActiveServers()
-
 	}
 
 	return nil
