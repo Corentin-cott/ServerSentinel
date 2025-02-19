@@ -39,21 +39,9 @@ func main() {
 	}()
 	fmt.Println("✔ Periodic service started, interval is set to", config.AppConfig.PeriodicEventsMin, "minutes.")
 
-	// Get the list of all the log files
-	logDirPath := "/opt/serversentinel/serverslog/" // Folder containing the log files
-	logFiles, err := filepath.Glob(filepath.Join(logDirPath, "*.log"))
-	if err != nil {
-		log.Fatalf("FATAL ERROR WHEN GETTING LOG FILES: %v", err)
-	}
-
-	if len(logFiles) == 0 {
-		log.Println("No log files found in the directory, did you forget to redirect the logs to the folder?")
-		return
-	}
-
 	// Create a list of triggers and create a wait group
 	triggersList := triggers.GetTriggers([]string{"PlayerJoinedMinecraftServer", "PlayerDisconnectedMinecraftServer"})
-	processLogFiles(logDirPath, triggersList)
+	processLogFiles("/opt/serversentinel/serverslog/", triggersList)
 
 	fmt.Println("Server Sentinel daemon stopped.")
 }
@@ -66,7 +54,7 @@ func processLogFiles(logDirPath string, triggersList []console.Trigger) {
 	}
 
 	if len(logFiles) == 0 {
-		log.Println("No log files found in the directory, did you forget to redirect the logs to the folder?")
+		log.Println("⚠ No log files found in the directory, did you forget to redirect the logs to the folder?")
 		return
 	}
 
