@@ -140,19 +140,21 @@ func StartServerTmux(sessionID int, server models.Server) error {
 
 	fmt.Println("Starting the tmux session for", server.Nom+"...")
 
-	// Extract the main version of Minecraft
-	versionParts := strings.Split(server.Version, ".")
-	if len(versionParts) < 2 {
-		return fmt.Errorf("INVALID MINECRAFT VERSION: %s", server.Version)
-	}
-	mcMainVersion := versionParts[0] + "." + versionParts[1]
+	if server.Jeu == "Minecraft" {
+		// Extract the main version of Minecraft
+		versionParts := strings.Split(server.Version, ".")
+		if len(versionParts) < 2 {
+			return fmt.Errorf("INVALID MINECRAFT VERSION: %s", server.Version)
+		}
+		mcMainVersion := versionParts[0] + "." + versionParts[1]
 
-	// Map the main version of Minecraft to the corresponding Java version
-	javaVersion, err := GetJavaVersionForMinecraftVersion(mcMainVersion, server.Modpack)
-	fmt.Println("Java version for Minecraft version", mcMainVersion, ":", javaVersion)
+		// Map the main version of Minecraft to the corresponding Java version
+		javaVersion, err := GetJavaVersionForMinecraftVersion(mcMainVersion, server.Modpack)
+		fmt.Println("Java version for Minecraft version", mcMainVersion, ":", javaVersion)
 
-	if err != nil {
-		return fmt.Errorf("ERROR WHILE GETTING JAVA VERSION FOR MINECRAFT VERSION: %v", err)
+		if err != nil {
+			return fmt.Errorf("ERROR WHILE GETTING JAVA VERSION FOR MINECRAFT VERSION: %v", err)
+		}
 	}
 
 	// Build the full command to start the server using its StartScript
@@ -190,7 +192,8 @@ func StopServerTmux(serverName string) error {
 	if err != nil {
 		return fmt.Errorf("ERROR WHILE STOPPING THE SERVER: %v", err)
 	}
-	time.Sleep(1 * time.Second) // Wait for the server to stop
+
+	time.Sleep(2 * time.Second)
 
 	// Just to be sure, send the exit command to the tmux session if it's still running
 	isRunning, err = IsServerRunning(serverName)
@@ -199,13 +202,12 @@ func StopServerTmux(serverName string) error {
 	}
 
 	if isRunning {
-		// Send the exit command to the tmux session
-		command = fmt.Sprintf("tmux send-keys -t '%s' 'exit' C-m", serverName)
+		// Kill the tmux session
+		command := fmt.Sprintf("tmux kill-session -t '%s'", serverName)
 		err = exec.Command("bash", "-c", command).Run()
 		if err != nil {
 			return fmt.Errorf("ERROR WHILE STOPPING THE TMUX SESSION: %v", err)
 		}
-		time.Sleep(1 * time.Second) // Wait for the server to stop again
 	}
 
 	fmt.Printf("✔ Server %s stopped\n", serverName)
