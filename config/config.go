@@ -17,6 +17,7 @@ type DatabaseConfig struct {
 
 // BotConfig is a struct that contains the configuration for the bot
 type BotConfig struct {
+	Activated        bool   `json:"activated"`
 	BotToken         string `json:"botToken"`
 	DiscordChannelID string `json:"discordChannelID"`
 }

@@ -14,6 +14,10 @@ import (
 
 // SendDiscordMessage() sends a message to a Discord channel
 func SendDiscordMessage(message string) error {
+	if !config.AppConfig.Bot.Activated {
+		return nil // If the bot is not activated, we don't send the message
+	}
+
 	// Get parameters from the configuration
 	botToken := config.AppConfig.Bot.BotToken
 	channelID := config.AppConfig.Bot.DiscordChannelID
@@ -68,6 +72,10 @@ func SendDiscordMessage(message string) error {
 }
 
 func SendDiscordEmbed(title string, description string, color string) error {
+	if !config.AppConfig.Bot.Activated {
+		return nil // If the bot is not activated, we don't send the message
+	}
+
 	botToken := config.AppConfig.Bot.BotToken
 	channelID := config.AppConfig.Bot.DiscordChannelID
 
