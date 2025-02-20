@@ -47,6 +47,18 @@ func StartPeriodicTask(PeriodicEventsMin int) error {
 		// Replace the "✔" and "✘" emojis with "\n✔" and "\n✘" for a better display in the Discord embed
 		message = strings.ReplaceAll(message, "✔", "\n✔")
 		message = strings.ReplaceAll(message, "✘", "\n✘")
+		tmuxSessions, err := tmux.GetTmuxSessions()
+		if err != nil {
+			fmt.Println(err)
+		} else {
+			// For each opened tmux session, we add \n- before the name
+			message += "\n\n♟ Curently opened serveurs:"
+			for _, session := range tmuxSessions {
+				message += "\n- " + session
+			}
+			message += fmt.Sprintf("\n%d opened sessions.", len(tmuxSessions))
+		}
+
 		err = discord.SendDiscordEmbed("♟ Serveur periodic check", message, color)
 		if err != nil {
 			fmt.Println(err)

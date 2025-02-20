@@ -5,6 +5,7 @@ import (
 	"os/exec"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/Corentin-cott/ServeurSentinel/internal/db"
 	"github.com/Corentin-cott/ServeurSentinel/internal/models"
@@ -176,14 +177,24 @@ func StopServerTmux(serverName string) error {
 	command := fmt.Sprintf("tmux send-keys -t '%s' 'stop' C-m", serverName)
 	err = exec.Command("bash", "-c", command).Run()
 	if err != nil {
-		return fmt.Errorf("ERROR WHILE STOPPING THE TMUX SESSION: %v", err)
+		return fmt.Errorf("ERROR WHILE STOPPING THE SERVER: %v", err)
+	}
+	time.Sleep(1 * time.Second) // Wait for the server to stop
+
+	// Just to be sure, send the exit command to the tmux session if it's still running
+	isRunning, err = IsServerRunning(serverName)
+	if err != nil {
+		return fmt.Errorf("ERROR WHILE CHECKING THE TMUX SESSION: %v", err)
 	}
 
-	// Just to be sure, send the exit command to the tmux session
-	command = fmt.Sprintf("tmux send-keys -t '%s' 'exit' C-m", serverName)
-	err = exec.Command("bash", "-c", command).Run()
-	if err != nil {
-		return fmt.Errorf("ERROR WHILE STOPPING THE TMUX SESSION: %v", err)
+	if isRunning {
+		// Send the exit command to the tmux session
+		command = fmt.Sprintf("tmux send-keys -t '%s' 'exit' C-m", serverName)
+		err = exec.Command("bash", "-c", command).Run()
+		if err != nil {
+			return fmt.Errorf("ERROR WHILE STOPPING THE TMUX SESSION: %v", err)
+		}
+		time.Sleep(1 * time.Second) // Wait for the server to stop again
 	}
 
 	fmt.Printf("✔ Server %s stopped\n", serverName)
