@@ -5,11 +5,37 @@ import (
 	"fmt"
 
 	"github.com/Corentin-cott/ServeurSentinel/config"
+	"github.com/Corentin-cott/ServeurSentinel/internal/models"
 	"github.com/Corentin-cott/ServeurSentinel/internal/services"
 	_ "github.com/go-sql-driver/mysql"
 )
 
 var db *sql.DB
+
+/* -----------------------------------------------------
+Table serveurs {
+    id INT [pk, increment]
+    nom VARCHAR(255) [not null]
+    jeu VARCHAR(255) [not null]
+    version VARCHAR(20) [not null]
+    modpack VARCHAR(255) [default: 'Vanilla']
+    modpack_url VARCHAR(255) [null]
+    nom_monde VARCHAR(255) [default: 'world']
+    embed_color VARCHAR(7) [default: '#000000']
+    path_serv TEXT [not null]
+    start_script VARCHAR(255) [not null]
+    actif BOOLEAN [default: false, not null]
+    global BOOLEAN [default: true, not null]
+}
+
+Table serveurs_parameters {
+    id_serv_primaire INT [ref: > serveurs.id, not null]
+    id_serv_secondaire INT [ref: > serveurs.id, not null]
+    host_primaire VARCHAR(255) [not null]
+    host_secondaire VARCHAR(255) [not null]
+    rcon_password VARCHAR(255) [not null]
+}
+----------------------------------------------------- */
 
 // ConnectToDatabase initialises the connection to the MySQL database
 func ConnectToDatabase() error {
@@ -22,6 +48,7 @@ func ConnectToDatabase() error {
 		config.AppConfig.DB.Name,
 	)
 
+	// Try to connect to the database
 	var err error
 	db, err = sql.Open("mysql", dsn)
 	if err != nil {
@@ -33,7 +60,7 @@ func ConnectToDatabase() error {
 		return fmt.Errorf("ERROR WHILE PINGING DATABASE: %v", err)
 	}
 
-	fmt.Println("Successfully connected to the database.")
+	fmt.Println("✔ Successfully connected to the database.")
 	return nil
 }
 
@@ -131,6 +158,82 @@ func UpdatePlayerLastConnection(playerID int) error {
 	return nil
 }
 
+// Getter to get the primary server
+func GetPrimaryServerId() int {
+	query := "SELECT id_serv_primaire FROM serveurs_parameters"
+	var serverID int
+
+	err := db.QueryRow(query).Scan(&serverID)
+	if err != nil {
+		fmt.Println("FAILED TO GET PRIMARY SERVER:", err)
+		return -1
+	}
+
+	return serverID
+}
+
+// Getter to get the secondary server
+func GetSecondaryServerId() int {
+	query := "SELECT id_serv_secondaire FROM serveurs_parameters"
+	var serverID int
+
+	err := db.QueryRow(query).Scan(&serverID)
+	if err != nil {
+		fmt.Println("FAILED TO GET SECONDARY SERVER:", err)
+		return -1
+	}
+
+	return serverID
+}
+
+// Getter to get all the server informations
+func GetServerById(serverID int) (models.Server, error) {
+	query := "SELECT * FROM serveurs WHERE id = ?"
+	var serv models.Server
+
+	err := db.QueryRow(query, serverID).Scan(&serv.ID, &serv.Nom, &serv.Jeu, &serv.Version, &serv.Modpack, &serv.ModpackURL, &serv.NomMonde, &serv.EmbedColor, &serv.PathServ, &serv.StartScript, &serv.Actif, &serv.Global)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return serv, fmt.Errorf("SERVER NOT FOUND: %d", serverID)
+		}
+		return serv, fmt.Errorf("FAILED TO GET SERVER: %v", err)
+	}
+
+	return serv, nil
+}
+
+// Getter to get the server by the server name
+func GetServerByName(serverName string) (models.Server, error) {
+	query := "SELECT * FROM serveurs WHERE nom = ?"
+	var serv models.Server
+
+	err := db.QueryRow(query, serverName).Scan(&serv.ID, &serv.Nom, &serv.Jeu, &serv.Version, &serv.Modpack, &serv.ModpackURL, &serv.NomMonde, &serv.EmbedColor, &serv.PathServ, &serv.StartScript, &serv.Actif, &serv.Global)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return serv, fmt.Errorf("SERVER NOT FOUND: %s", serverName)
+		}
+		return serv, fmt.Errorf("FAILED TO GET SERVER: %v", err)
+	}
+
+	return serv, nil
+}
+
+// Getter to get the server game by the server ID
+func GetServerGameById(serverID int) (string, error) {
+	query := "SELECT jeu FROM serveurs WHERE id = ?"
+	var jeu string
+
+	err := db.QueryRow(query, serverID).Scan(&jeu)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return "", fmt.Errorf("GAME NOT FOUND FOR SERVER ID: %d", serverID)
+		}
+		return "", fmt.Errorf("FAILED TO GET SERVER GAME: %v", err)
+	}
+
+	return jeu, nil
+}
+
 // Getter to get the player ID by the account ID
 func GetPlayerIdByAccountId(accountId any) (int, error) {
 	query := "SELECT id FROM joueurs WHERE compte_id = ?"
@@ -162,20 +265,4 @@ func GetPlayerAccountIdByPlayerName(playerName string, jeu string) (string, erro
 	default:
 		return "", fmt.Errorf("UNKNOWN GAME: %s", jeu)
 	}
-}
-
-// Getter to get the server game by the server ID
-func GetServerGameById(serverID int) (string, error) {
-	query := "SELECT jeu FROM serveurs WHERE id = ?"
-	var jeu string
-
-	err := db.QueryRow(query, serverID).Scan(&jeu)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return "", fmt.Errorf("GAME NOT FOUND FOR SERVER ID: %d", serverID)
-		}
-		return "", fmt.Errorf("FAILED TO GET SERVER GAME: %v", err)
-	}
-
-	return jeu, nil
 }

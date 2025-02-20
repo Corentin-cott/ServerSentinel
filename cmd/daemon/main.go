@@ -5,16 +5,18 @@ import (
 	"log"
 	"path/filepath"
 	"sync"
+	"time"
 
 	"github.com/Corentin-cott/ServeurSentinel/config"
 	"github.com/Corentin-cott/ServeurSentinel/internal/console"
 	"github.com/Corentin-cott/ServeurSentinel/internal/db"
+	periodic "github.com/Corentin-cott/ServeurSentinel/internal/events"
 	"github.com/Corentin-cott/ServeurSentinel/internal/triggers"
 )
 
 func main() {
 
-	fmt.Println("Starting the Server Sentinel daemon...")
+	fmt.Println("Starting the Server Sentinel daemon (" + time.Now().Format("02/01/2006 15:04:05") + ") ...")
 
 	// Load the configuration file
 	err := config.LoadConfig("/opt/serversentinel/config.json")
@@ -28,21 +30,18 @@ func main() {
 		log.Fatalf("FATAL ERROR TESTING DATABASE CONNECTION: %v", err)
 	}
 
-	// Get the list of all the log files
-	logDirPath := "/opt/serversentinel/serverslog/" // Folder containing the log files
-	logFiles, err := filepath.Glob(filepath.Join(logDirPath, "*.log"))
-	if err != nil {
-		log.Fatalf("FATAL ERROR WHEN GETTING LOG FILES: %v", err)
-	}
-
-	if len(logFiles) == 0 {
-		log.Println("No log files found in the directory, did you forget to redirect the logs to the folder ?")
-		return
-	}
+	// Start the periodic service
+	go func() {
+		err := periodic.StartPeriodicTask(config.AppConfig.PeriodicEventsMin)
+		if err != nil {
+			log.Fatalf("FATAL ERROR STARTING PERIODIC TASK: %v", err)
+		}
+	}()
+	fmt.Println("✔ Periodic service started, interval is set to", config.AppConfig.PeriodicEventsMin, "minutes.")
 
 	// Create a list of triggers and create a wait group
 	triggersList := triggers.GetTriggers([]string{"PlayerJoinedMinecraftServer", "PlayerDisconnectedMinecraftServer"})
-	processLogFiles(logDirPath, triggersList)
+	processLogFiles("/opt/serversentinel/serverslog/", triggersList)
 
 	fmt.Println("Server Sentinel daemon stopped.")
 }
@@ -55,7 +54,7 @@ func processLogFiles(logDirPath string, triggersList []console.Trigger) {
 	}
 
 	if len(logFiles) == 0 {
-		log.Println("No log files found in the directory, did you forget to redirect the logs to the folder?")
+		log.Println("⚠ No log files found in the directory, did you forget to redirect the logs to the folder?")
 		return
 	}
 
