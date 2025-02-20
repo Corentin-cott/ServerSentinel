@@ -10,6 +10,83 @@ import (
 	"github.com/Corentin-cott/ServeurSentinel/internal/models"
 )
 
+// Check if the active servers match the servers in the database
+func CheckRunningServers() (string, error) {
+	var message strings.Builder
+
+	// Get the primary and secondary servers from the database
+	primaryServer, err := db.GetServerById(db.GetPrimaryServerId())
+	if err != nil {
+		return "", fmt.Errorf("ERROR WHILE GETTING PRIMARY SERVER: %v", err)
+	}
+
+	secondaryServer, err := db.GetServerById(db.GetSecondaryServerId())
+	if err != nil {
+		return "", fmt.Errorf("ERROR WHILE GETTING SECONDARY SERVER: %v", err)
+	}
+
+	// Get the active tmux sessions
+	activeSessions, err := GetTmuxSessions()
+	if err != nil {
+		return "", fmt.Errorf("ERROR WHILE GETTING ACTIVE TMUX SESSIONS: %v", err)
+	}
+
+	// Check if the active servers match the servers in the database
+	for _, session := range activeSessions {
+		isSupposedToBeRunning, err := IsServerSupposedToBeRunning(session)
+		if err != nil {
+			fmt.Fprintf(&message, "ERROR WHILE CHECKING IF %s SHOULD BE RUNNING: %v", session, err)
+			continue
+		}
+
+		// If the server is not supposed to be running, stop it
+		if !isSupposedToBeRunning {
+			err := StopServerTmux(session)
+			if err != nil {
+				fmt.Fprintf(&message, "ERROR WHILE STOPPING %s: %v", session, err)
+			} else {
+				fmt.Fprintf(&message, "✘ Stopped server: %s (not supposed to be running) ", session)
+			}
+		}
+	}
+
+	// Check if the espected servers are running
+	for _, server := range []models.Server{primaryServer, secondaryServer} {
+		isRunning, err := IsServerRunning(server.Nom)
+		if err != nil {
+			fmt.Fprintf(&message, "ERROR WHILE CHECKING IF %s IS RUNNING: %v", server.Nom, err)
+			continue
+		}
+
+		// If the server is not running, start it
+		if !isRunning {
+			sessionID := -1
+			if server.ID == primaryServer.ID {
+				sessionID = 1
+			} else if server.ID == secondaryServer.ID {
+				sessionID = 2
+			} else {
+				fmt.Fprintf(&message, "SERVER %s IS NOT PRIMARY NOR SECONDARY", server.Nom)
+				continue
+			}
+
+			err := StartServerTmux(sessionID, server)
+			if err != nil {
+				fmt.Fprintf(&message, "ERROR WHILE STARTING %s: %v", server.Nom, err)
+			} else {
+				fmt.Fprintf(&message, "✔ Started server: %s (supposed to be running) ", server.Nom)
+			}
+		}
+	}
+
+	// Empty message means all servers are running
+	if message.Len() == 0 {
+		message.WriteString("✔ Nothing to do, all servers are running as expected.")
+	}
+
+	return message.String(), nil
+}
+
 // Check if a server is currently running in a tmux session
 func IsServerRunning(serverName string) (bool, error) {
 	command := fmt.Sprintf("tmux list-sessions -F '#{session_name}' | grep -w \"%s\" | wc -l", serverName)
@@ -117,7 +194,9 @@ func StopServerTmux(serverName string) error {
 func GetTmuxSessions() ([]string, error) {
 	commandOutput, err := exec.Command("tmux", "list-sessions", "-F", "#{session_name}").Output()
 	if err != nil {
-		return nil, fmt.Errorf("ERROR WHILE GETTING TMUX SESSIONS: %v", err)
+		// Error can just be that there are no tmux sessions, so we return an empty array
+		fmt.Println("✘ No tmux sessions found, or error while getting tmux sessions:", err)
+		return []string{}, nil
 	}
 
 	// Remove the newline character and split the output into an array
