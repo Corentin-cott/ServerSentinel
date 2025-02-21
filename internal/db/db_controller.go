@@ -2,7 +2,9 @@ package db
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/Corentin-cott/ServeurSentinel/config"
 	"github.com/Corentin-cott/ServeurSentinel/internal/models"
@@ -35,6 +37,27 @@ Table serveurs_parameters {
     host_secondaire VARCHAR(255) [not null]
     rcon_password VARCHAR(255) [not null]
 }
+
+Table joueurs_stats {
+  id INT [pk, increment]
+  serveur_id INT [ref: > serveurs.id, not null]
+  joueurs_id INT [ref: > joueurs.id, not null]
+  tmps_jeux BIGINT [default: 0]
+  nb_mort INT [default: 0]
+  nb_kills INT [default: 0]
+  nb_playerkill INT [default: 0]
+  mob_killed JSON
+  nb_blocs_detr INT [default: 0]
+  nb_blocs_pose INT [default: 0]
+  dist_total INT [default: 0]
+  dist_pieds INT [default: 0]
+  dist_elytres INT [default: 0]
+  dist_vol INT [default: 0]
+  item_crafted JSON
+  item_broken JSON
+  achievement JSON
+  dern_enregistrment DATETIME [not null]
+}
 ----------------------------------------------------- */
 
 // ConnectToDatabase initialises the connection to the MySQL database
@@ -62,6 +85,48 @@ func ConnectToDatabase() error {
 
 	fmt.Println("✔ Successfully connected to the database.")
 	return nil
+}
+
+// GetAllServers returns all the servers from the database
+func GetAllServers() ([]models.Server, error) {
+	query := "SELECT * FROM serveurs"
+	rows, err := db.Query(query)
+	if err != nil {
+		return nil, fmt.Errorf("FAILED TO GET SERVERS: %v", err)
+	}
+	defer rows.Close()
+
+	var servers []models.Server
+	for rows.Next() {
+		var serv models.Server
+		if err := rows.Scan(&serv.ID, &serv.Nom, &serv.Jeu, &serv.Version, &serv.Modpack, &serv.ModpackURL, &serv.NomMonde, &serv.EmbedColor, &serv.PathServ, &serv.StartScript, &serv.Actif, &serv.Global); err != nil {
+			return nil, fmt.Errorf("FAILED TO SCAN SERVER: %v", err)
+		}
+		servers = append(servers, serv)
+	}
+
+	return servers, nil
+}
+
+// GetAllMineCraftServers returns all the Minecraft servers from the database
+func GetAllMinecraftServers() ([]models.Server, error) {
+	query := "SELECT * FROM serveurs WHERE jeu = 'Minecraft'"
+	rows, err := db.Query(query)
+	if err != nil {
+		return nil, fmt.Errorf("FAILED TO GET MINECRAFT SERVERS: %v", err)
+	}
+	defer rows.Close()
+
+	var servers []models.Server
+	for rows.Next() {
+		var serv models.Server
+		if err := rows.Scan(&serv.ID, &serv.Nom, &serv.Jeu, &serv.Version, &serv.Modpack, &serv.ModpackURL, &serv.NomMonde, &serv.EmbedColor, &serv.PathServ, &serv.StartScript, &serv.Actif, &serv.Global); err != nil {
+			return nil, fmt.Errorf("FAILED TO SCAN MINECRAFT SERVER: %v", err)
+		}
+		servers = append(servers, serv)
+	}
+
+	return servers, nil
 }
 
 // SaveConnectionLog saves a connection log for a player
@@ -93,7 +158,7 @@ func SaveConnectionLog(playerName string, serverID int) error {
 	}
 
 	// Insert log in the database
-	insertQuery := `INSERT INTO joueurs_connections_log (serveur_id, joueur_id, date) VALUES (?, ?, NOW())`
+	insertQuery := `INSERT INTO joueurs_connections_log (serveur_id, compte_id, date) VALUES (?, ?, NOW())`
 	fmt.Println("Inserting connection log for player", playerID)
 	_, err = db.Exec(insertQuery, serverID, playerID)
 	if err != nil {
@@ -122,7 +187,7 @@ func CheckAndInsertPlayer(playerName string, serverID int) (int, error) {
 	fmt.Println("Checking if player exists...")
 	playerID, _ := GetPlayerIdByAccountId(playerAcountID)
 	if playerID != -1 {
-		fmt.Printf("Player already exists with ID (this is not a problem) %d\n", playerID)
+		fmt.Printf("Player already exists with ID (this is not a problem) %d", playerID)
 		return playerID, nil // Player already exists, return its ID
 	}
 
@@ -265,4 +330,144 @@ func GetPlayerAccountIdByPlayerName(playerName string, jeu string) (string, erro
 	default:
 		return "", fmt.Errorf("UNKNOWN GAME: %s", jeu)
 	}
+}
+
+func CheckMinecraftPlayerGameStatisticsExists(playerUUID string, serverID int) bool {
+	query := "SELECT COUNT(*) FROM joueurs_stats WHERE compte_id = ? AND serveur_id = ?"
+	var count int
+
+	err := db.QueryRow(query, playerUUID, serverID).Scan(&count)
+	if err != nil {
+		fmt.Println("FAILED TO CHECK PLAYER STATISTICS:", err)
+		return false
+	}
+
+	return count > 0
+}
+
+// SaveMinecraftPlayerGameStatistics saves the game statistics of a Minecraft player
+func SaveMinecraftPlayerGameStatistics(serverID int, playerUUID string, playerStats models.MinecraftPlayerGameStatistics) error {
+	// Prepare the SQL query
+	query := `
+		INSERT INTO joueurs_stats (
+			serveur_id, compte_id, tmps_jeux, nb_mort, nb_kills, nb_playerkill,
+			mob_killed, nb_blocs_detr, nb_blocs_pose, dist_total, dist_pieds,
+			dist_elytres, dist_vol, item_crafted, item_broken, achievement, dern_enregistrment
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		ON DUPLICATE KEY UPDATE
+			tmps_jeux = VALUES(tmps_jeux),
+			nb_mort = VALUES(nb_mort),
+			nb_kills = VALUES(nb_kills),
+			nb_playerkill = VALUES(nb_playerkill),
+			mob_killed = VALUES(mob_killed),
+			nb_blocs_detr = VALUES(nb_blocs_detr),
+			nb_blocs_pose = VALUES(nb_blocs_pose),
+			dist_total = VALUES(dist_total),
+			dist_pieds = VALUES(dist_pieds),
+			dist_elytres = VALUES(dist_elytres),
+			dist_vol = VALUES(dist_vol),
+			item_crafted = VALUES(item_crafted),
+			item_broken = VALUES(item_broken),
+			achievement = VALUES(achievement),
+			dern_enregistrment = VALUES(dern_enregistrment)
+	`
+
+	// Convert JSON fields
+	mobKilledJSON, err := json.Marshal(playerStats.MobsKilled)
+	if err != nil {
+		return fmt.Errorf("failed to marshal mob_killed: %v", err)
+	}
+
+	itemsCraftedJSON, err := json.Marshal(playerStats.ItemsCrafted)
+	if err != nil {
+		return fmt.Errorf("failed to marshal item_crafted: %v", err)
+	}
+
+	itemsBrokenJSON, err := json.Marshal(playerStats.ItemsBroken)
+	if err != nil {
+		return fmt.Errorf("failed to marshal item_broken: %v", err)
+	}
+
+	achievementsJSON, err := json.Marshal(playerStats.Achievements)
+	if err != nil {
+		return fmt.Errorf("failed to marshal achievement: %v", err)
+	}
+
+	// Execute the query with all the necessary values
+	_, err = db.Exec(query,
+		serverID, playerUUID, playerStats.TimePlayed,
+		playerStats.Deaths, playerStats.Kills, playerStats.PlayerKills,
+		mobKilledJSON, playerStats.BlocksDestroyed, playerStats.BlocksPlaced,
+		playerStats.TotalDistance, playerStats.DistanceByFoot, playerStats.DistanceByElytra,
+		playerStats.DistanceByFlight, itemsCraftedJSON, itemsBrokenJSON,
+		achievementsJSON, time.Now(), // Ensure time is correctly handled
+	)
+
+	if err != nil {
+		return fmt.Errorf("failed to insert/update player statistics: %v", err)
+	}
+
+	return nil
+}
+
+// UpdateMinecraftPlayerGameStatistics updates the game statistics of a Minecraft player
+func UpdateMinecraftPlayerGameStatistics(serverID int, playerUUID string, playerStats models.MinecraftPlayerGameStatistics) error {
+	// Prepare the SQL query
+	query := `
+		UPDATE joueurs_stats
+		SET
+			tmps_jeux = ?,
+			nb_mort = ?,
+			nb_kills = ?,
+			nb_playerkill = ?,
+			mob_killed = ?,
+			nb_blocs_detr = ?,
+			nb_blocs_pose = ?,
+			dist_total = ?,
+			dist_pieds = ?,
+			dist_elytres = ?,
+			dist_vol = ?,
+			item_crafted = ?,
+			item_broken = ?,
+			achievement = ?,
+			dern_enregistrment = ?
+		WHERE
+			serveur_id = ? AND compte_id = ?
+	`
+
+	// Convert JSON fields
+	mobKilledJSON, err := json.Marshal(playerStats.MobsKilled)
+	if err != nil {
+		return fmt.Errorf("failed to marshal mob_killed: %v", err)
+	}
+
+	itemsCraftedJSON, err := json.Marshal(playerStats.ItemsCrafted)
+	if err != nil {
+		return fmt.Errorf("failed to marshal item_crafted: %v", err)
+	}
+
+	itemsBrokenJSON, err := json.Marshal(playerStats.ItemsBroken)
+	if err != nil {
+		return fmt.Errorf("failed to marshal item_broken: %v", err)
+	}
+
+	achievementsJSON, err := json.Marshal(playerStats.Achievements)
+	if err != nil {
+		return fmt.Errorf("failed to marshal achievement: %v", err)
+	}
+
+	// Execute the query with all the necessary values
+	_, err = db.Exec(query,
+		playerStats.TimePlayed, playerStats.Deaths, playerStats.Kills, playerStats.PlayerKills,
+		mobKilledJSON, playerStats.BlocksDestroyed, playerStats.BlocksPlaced,
+		playerStats.TotalDistance, playerStats.DistanceByFoot, playerStats.DistanceByElytra,
+		playerStats.DistanceByFlight, itemsCraftedJSON, itemsBrokenJSON,
+		achievementsJSON, time.Now(), serverID, playerUUID,
+	)
+
+	if err != nil {
+		return fmt.Errorf("failed to update player statistics: %v", err)
+	}
+
+	return nil
 }

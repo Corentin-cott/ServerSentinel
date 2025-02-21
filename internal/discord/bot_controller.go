@@ -15,7 +15,7 @@ import (
 // SendDiscordMessage() sends a message to a Discord channel
 func SendDiscordMessage(bot models.BotConfig, channelID string, message string) error {
 	if !bot.Activated {
-		fmt.Println("Bot " + bot.BotToken + " is not activated")
+		// fmt.Println("Bot " + bot.BotToken + " is not activated")
 		return nil // If the bot is not activated, we don't send the message
 	}
 
@@ -71,7 +71,7 @@ func SendDiscordMessage(bot models.BotConfig, channelID string, message string) 
 
 func SendDiscordEmbed(bot models.BotConfig, channelID string, title string, description string, color string) error {
 	if !bot.Activated {
-		fmt.Println("Bot " + bot.BotToken + " is not activated")
+		// fmt.Println("Bot " + bot.BotToken + " is not activated")
 		return nil // If the bot is not activated, we don't send the message
 	}
 

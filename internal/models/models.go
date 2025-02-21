@@ -38,3 +38,24 @@ type Server struct {
 	Actif       bool
 	Global      bool
 }
+
+type MinecraftPlayerGameStatistics struct {
+	ID               int
+	ServerID         int
+	PlayerID         int
+	TimePlayed       int
+	Deaths           int
+	Kills            int
+	PlayerKills      int
+	MobsKilled       map[string]int
+	BlocksDestroyed  int
+	BlocksPlaced     int
+	TotalDistance    int
+	DistanceByFoot   int
+	DistanceByElytra int
+	DistanceByFlight int
+	ItemsCrafted     map[string]int
+	ItemsBroken      map[string]int
+	Achievements     map[string]bool
+	LastRecordedTime string
+}
