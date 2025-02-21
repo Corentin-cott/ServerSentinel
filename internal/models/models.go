@@ -23,6 +23,16 @@ type DiscordChannels struct {
 	PalworldChatChannelID  string `json:"palworldChatChannelID"`
 }
 
+// Type Player is a struct that represents a player in the database
+type Player struct {
+	ID            int
+	UtilisateurID int
+	Jeu           string
+	CompteID      string
+	PremiereCo    string
+	DerniereCo    string
+}
+
 // Type Server is a struct that represents a server in the database
 type Server struct {
 	ID          int
@@ -39,6 +49,7 @@ type Server struct {
 	Global      bool
 }
 
+// Type MinecraftPlayer is a struct that represents a player in the database (very specific, i know)
 type MinecraftPlayerGameStatistics struct {
 	ID               int
 	ServerID         int

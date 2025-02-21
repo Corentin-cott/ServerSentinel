@@ -236,6 +236,42 @@ Table joueurs {
 }
 ----------------------------------------------------- */
 
+// GetAllPlayers returns all the players from the database
+func GetAllPlayers() ([]models.Player, error) {
+	return nil, nil // TODO
+}
+
+// GetAllMinecraftPlayers returns all the Minecraft players from the database
+func GetAllMinecraftPlayers() ([]models.Player, error) {
+	query := "SELECT * FROM joueurs WHERE jeu = 'Minecraft'"
+	rows, err := db.Query(query)
+	if err != nil {
+		return nil, fmt.Errorf("FAILED TO GET MINECRAFT PLAYERS: %v", err)
+	}
+	defer rows.Close()
+
+	var players []models.Player
+	for rows.Next() {
+		var player models.Player
+		var utilisateurID sql.NullInt64 // Use sql.NullInt64 to handle NULL values
+
+		if err := rows.Scan(&player.ID, &utilisateurID, &player.Jeu, &player.CompteID, &player.PremiereCo, &player.DerniereCo); err != nil {
+			return nil, fmt.Errorf("FAILED TO SCAN MINECRAFT PLAYER: %v", err)
+		}
+
+		// If the utilisateurID is NULL, set it to 0
+		if utilisateurID.Valid {
+			player.UtilisateurID = int(utilisateurID.Int64)
+		} else {
+			player.UtilisateurID = 0
+		}
+
+		players = append(players, player)
+	}
+
+	return players, nil
+}
+
 // CheckAndInsertPlayer checks if a player exists in the database and inserts it if it doesn't
 func CheckAndInsertPlayer(playerName string, serverID int) (int, error) {
 	// Get server game

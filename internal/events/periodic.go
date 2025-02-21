@@ -71,37 +71,43 @@ func StartPeriodicTask(PeriodicEventsMin int) error {
 		fmt.Println("Saving Minecraft players game statistics...")
 		serverListe, err := db.GetAllMinecraftServers()
 		if err != nil {
-			fmt.Println("❌ Error while getting the Minecraft servers list" + err.Error())
+			fmt.Println("❌ Error while getting the Minecraft servers list " + err.Error())
+		}
+		playerListe, err := db.GetAllMinecraftPlayers()
+		if err != nil {
+			fmt.Println("❌ Error while getting the Minecraft players list " + err.Error())
 		}
 
 		for _, server := range serverListe {
 			fmt.Println("Server : " + server.Nom)
-			playerID := 1
-			playerUUID := "4a575f21f53346718ef3aaff4146ff8c"
+			for _, player := range playerListe {
+				playerID := player.ID
+				playerUUID := player.CompteID
 
-			_, _, playerStats, error := services.GetMinecraftPlayerGameStatistics(playerID, playerUUID, server)
-			if error != nil {
-				fmt.Println(error)
-			}
+				_, _, playerStats, error := services.GetMinecraftPlayerGameStatistics(playerID, playerUUID, server)
+				if error != nil {
+					fmt.Println(error)
+				}
 
-			if db.CheckMinecraftPlayerGameStatisticsExists(playerUUID, server.ID) {
-				fmt.Println("Player " + playerUUID + " statistics already exists, updating...")
-				err := db.UpdateMinecraftPlayerGameStatistics(server.ID, playerUUID, playerStats)
+				if db.CheckMinecraftPlayerGameStatisticsExists(playerUUID, server.ID) {
+					fmt.Println("Player " + playerUUID + " statistics already exists, updating...")
+					err := db.UpdateMinecraftPlayerGameStatistics(server.ID, playerUUID, playerStats)
+					if err != nil {
+						fmt.Println(err)
+					}
+					fmt.Println("✔ Player " + playerUUID + " statistics updated successfully.")
+				} else {
+					err := db.SaveMinecraftPlayerGameStatistics(server.ID, playerUUID, playerStats)
+					if err != nil {
+						fmt.Println(err)
+					}
+					fmt.Println("✔ Player " + playerUUID + " statistics saved successfully.")
+				}
+
+				err = discord.SendDiscordEmbed(config.AppConfig.Bots["mineotterBot"], config.AppConfig.DiscordChannels.ServerStatusChannelID, "♟ Minecraft statistics update", "TODO", "#9adfba")
 				if err != nil {
 					fmt.Println(err)
 				}
-				fmt.Println("✔ Player " + playerUUID + " statistics updated successfully.")
-			} else {
-				err := db.SaveMinecraftPlayerGameStatistics(server.ID, playerUUID, playerStats)
-				if err != nil {
-					fmt.Println(err)
-				}
-				fmt.Println("✔ Player " + playerUUID + " statistics saved successfully.")
-			}
-
-			err = discord.SendDiscordEmbed(config.AppConfig.Bots["mineotterBot"], config.AppConfig.DiscordChannels.ServerStatusChannelID, "♟ Minecraft statistics update", "TODO", "#9adfba")
-			if err != nil {
-				fmt.Println(err)
 			}
 		}
 		fmt.Println("✔ Minecraft players game statistics saved successfully.")
