@@ -24,6 +24,17 @@ func main() {
 		log.Fatalf("FATAL ERROR LOADING CONFIG JSON FILE: %v", err)
 	}
 
+	// Check that the bot configuation exists
+	if len(config.AppConfig.Bots) == 0 {
+		log.Fatalf("FATAL ERROR: NO BOT CONFIGURATION FOUND")
+		return
+	} else {
+		fmt.Println("✔ Bot configuration loaded :")
+		for botName, botConfig := range config.AppConfig.Bots {
+			fmt.Println("  -", botName, ":", botConfig)
+		}
+	}
+
 	// Initialize the connection to the database
 	err = db.ConnectToDatabase()
 	if err != nil {
@@ -40,7 +51,9 @@ func main() {
 	fmt.Println("✔ Periodic service started, interval is set to", config.AppConfig.PeriodicEventsMin, "minutes.")
 
 	// Create a list of triggers and create a wait group
-	triggersList := triggers.GetTriggers([]string{"PlayerJoinedMinecraftServer", "PlayerDisconnectedMinecraftServer"})
+	// triggersList := triggers.GetTriggers([]string{"MinecraftServerStarted", "MinecraftServerStopped", "PlayerJoinedMinecraftServer"}) // Example with selected triggers
+	triggersList := triggers.GetTriggers([]string{})
+	fmt.Println("✔ Triggers loaded : ", len(triggersList), " triggers.")
 	processLogFiles("/opt/serversentinel/serverslog/", triggersList)
 
 	fmt.Println("Server Sentinel daemon stopped.")

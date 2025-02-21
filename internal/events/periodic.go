@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Corentin-cott/ServeurSentinel/config"
 	"github.com/Corentin-cott/ServeurSentinel/internal/discord"
 	"github.com/Corentin-cott/ServeurSentinel/internal/tmux"
 )
@@ -27,7 +28,7 @@ func StartPeriodicTask(PeriodicEventsMin int) error {
 	for range ticker.C {
 		// Execute the periodic task : Log the time and send a message to Discord
 		Task()
-		discord.SendDiscordEmbed("♟ "+time.Now().Format("02/01/2006 15:04:05"), "Periodic task executed.", "#9adfba")
+		discord.SendDiscordEmbed(config.AppConfig.Bots["mineotterBot"], config.AppConfig.DiscordChannels.ServerStatusChannelID, "♟ "+time.Now().Format("02/01/2006 15:04:05"), "Periodic task executed.", "#9adfba")
 
 		// Check if the right tmux servers are running
 		color := "#9adfba"
@@ -59,13 +60,13 @@ func StartPeriodicTask(PeriodicEventsMin int) error {
 			message += fmt.Sprintf("\n%d opened sessions.", len(tmuxSessions))
 		}
 
-		err = discord.SendDiscordEmbed("♟ Serveur periodic check", message, color)
+		err = discord.SendDiscordEmbed(config.AppConfig.Bots["mineotterBot"], config.AppConfig.DiscordChannels.ServerStatusChannelID, "♟ Serveur periodic check", message, color)
 		if err != nil {
 			fmt.Println(err)
 		}
 
 		// Get the minecraft player game statistics
-		err = discord.SendDiscordEmbed("♟ Minecraft statistics update", "TODO", "#9adfba")
+		err = discord.SendDiscordEmbed(config.AppConfig.Bots["mineotterBot"], config.AppConfig.DiscordChannels.ServerStatusChannelID, "♟ Minecraft statistics update", "TODO", "#9adfba")
 		if err != nil {
 			fmt.Println(err)
 		}

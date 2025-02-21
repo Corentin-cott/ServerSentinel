@@ -4,30 +4,17 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+
+	"github.com/Corentin-cott/ServeurSentinel/internal/models"
 )
-
-// DatabaseConfig is a struct that contains the configuration for the database
-type DatabaseConfig struct {
-	Host     string `json:"host"`
-	Port     int    `json:"port"`
-	User     string `json:"user"`
-	Password string `json:"password"`
-	Name     string `json:"name"`
-}
-
-// BotConfig is a struct that contains the configuration for the bot
-type BotConfig struct {
-	Activated        bool   `json:"activated"`
-	BotToken         string `json:"botToken"`
-	DiscordChannelID string `json:"discordChannelID"`
-}
 
 // Config is a struct that contains every configuration needed for ServeurSentinel
 type Config struct {
-	Bot               BotConfig      `json:"bot"`
-	DB                DatabaseConfig `json:"db"`
-	LogPath           string         `json:"logPath"`
-	PeriodicEventsMin int            `json:"periodicEventsMin"`
+	Bots              map[string]models.BotConfig `json:"bots"`
+	DiscordChannels   models.DiscordChannels      `json:"discordChannels"`
+	DB                models.DatabaseConfig       `json:"db"`
+	LogPath           string                      `json:"logPath"`
+	PeriodicEventsMin int                         `json:"periodicEventsMin"`
 }
 
 var AppConfig Config

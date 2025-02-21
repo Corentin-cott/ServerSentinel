@@ -5,7 +5,9 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/Corentin-cott/ServeurSentinel/config"
 	"github.com/Corentin-cott/ServeurSentinel/internal/console"
+	"github.com/Corentin-cott/ServeurSentinel/internal/discord"
 )
 
 // GetTriggers returns the list of triggers filtered by names
@@ -25,6 +27,28 @@ func GetTriggers(selectedTriggers []string) []console.Trigger {
 			},
 		},
 		{
+			// This trigger is used to detect when a minecraft server is started
+			Name: "MinecraftServerStarted",
+			Condition: func(line string) bool {
+				// For this trigger, we'll need regex to extract the time and the server name
+				minecraftServerStartedRegex := regexp.MustCompile(`\[(\d{2}:\d{2}:\d{2})\] \[Server thread/INFO\]: Done \((\d+\.\d+)s\)! For help, type "help"`)
+				return minecraftServerStartedRegex.MatchString(line)
+			},
+			Action: func(line string) {
+				discord.SendDiscordEmbed(config.AppConfig.Bots["mineotterBot"], config.AppConfig.DiscordChannels.MinecraftChatChannelID, "Connectez-vous !", "Le serveur Minecraft est en ligne", "#9adfba")
+			},
+		},
+		{
+			// This trigger is used to detect when a minecraft server is stopped
+			Name: "MinecraftServerStopped",
+			Condition: func(line string) bool {
+				return strings.Contains(line, "Stopping the server")
+			},
+			Action: func(line string) {
+				discord.SendDiscordEmbed(config.AppConfig.Bots["mineotterBot"], config.AppConfig.DiscordChannels.MinecraftChatChannelID, "Arrêt du serveur", "Le serveur Minecraft est désormais hors ligne", "#9adfba")
+			},
+		},
+		{
 			// This trigger is used to detect when a player joins a Minecraft server
 			Name: "PlayerJoinedMinecraftServer",
 			Condition: func(line string) bool {
@@ -37,7 +61,7 @@ func GetTriggers(selectedTriggers []string) []console.Trigger {
 					fmt.Println("ERROR WHILE EXTRACTING JOINED PLAYER NAME")
 					return
 				}
-				SendToDiscord(matches[2] + " à rejoint le serveur")
+				discord.SendDiscordMessage(config.AppConfig.Bots["mineotterBot"], config.AppConfig.DiscordChannels.MinecraftChatChannelID, matches[2]+" à rejoint le serveur")
 				WriteToLogFile("/var/log/serversentinel/playerjoined.log", matches[2])
 			},
 		},
@@ -54,8 +78,21 @@ func GetTriggers(selectedTriggers []string) []console.Trigger {
 					fmt.Println("ERROR WHILE EXTRACTING DISCONNECTED PLAYER NAME")
 					return
 				}
-				SendToDiscord(matches[2] + " à quitté le serveur")
+				discord.SendDiscordMessage(config.AppConfig.Bots["mineotterBot"], config.AppConfig.DiscordChannels.MinecraftChatChannelID, matches[2]+" à quitté le serveur")
 				WriteToLogFile("/var/log/serversentinel/playerdisconnected.log", matches[2])
+			},
+		},
+		{
+			// This trigger is used to detect when a palworld server is started
+			Name: "PalworldServerStarted",
+			Condition: func(line string) bool {
+				fmt.Printf("Ligne reçue: %q\n", line)
+
+				palworldServerStartedRegex := regexp.MustCompile(`Running Palworld dedicated server on :\d+`)
+				return palworldServerStartedRegex.MatchString(line)
+			},
+			Action: func(line string) {
+				discord.SendDiscordEmbed(config.AppConfig.Bots["mineotterBot"], config.AppConfig.DiscordChannels.PalworldChatChannelID, "Connectez-vous !", "Le serveur Palworld est en ligne", "#9adfba")
 			},
 		},
 	}
