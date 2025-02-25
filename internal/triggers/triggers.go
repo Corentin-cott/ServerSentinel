@@ -86,8 +86,6 @@ func GetTriggers(selectedTriggers []string) []console.Trigger {
 			// This trigger is used to detect when a palworld server is started
 			Name: "PalworldServerStarted",
 			Condition: func(line string) bool {
-				fmt.Printf("Ligne reçue: %q\n", line)
-
 				palworldServerStartedRegex := regexp.MustCompile(`Running Palworld dedicated server on :\d+`)
 				return palworldServerStartedRegex.MatchString(line)
 			},

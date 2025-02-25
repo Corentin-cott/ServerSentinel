@@ -55,7 +55,7 @@ func StartPeriodicTask(PeriodicEventsMin int) error {
 			fmt.Println(err)
 		} else {
 			// For each opened tmux session, we add \n- before the name
-			message += "\n\n♟ Curently opened serveurs:"
+			message += "\n\nCurently opened serveurs:"
 			for _, session := range tmuxSessions {
 				message += "\n- " + session
 			}
@@ -74,17 +74,25 @@ func StartPeriodicTask(PeriodicEventsMin int) error {
 			fmt.Println("❌ Error while getting the Minecraft servers list " + err.Error())
 		}
 
+		nbPlayerSaves := 0
+		nbPlayerSavesFailed := 0
+		serverThatFailedSavesList := make([]string, 0)
 		for _, server := range serverList {
 			fmt.Println("*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-* Server " + server.Nom + " *-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*")
 			playerUUIDList, err := services.GetMinecraftPlayerServerUUIDSaves(server)
 			if err != nil {
 				fmt.Println("❌ Error while getting the Minecraft players list " + err.Error())
+				serverThatFailedSavesList = append(serverThatFailedSavesList, server.Nom)
 			}
 
 			for _, playerUUID := range playerUUIDList {
+				nbPlayerSaves++
+
 				fmt.Println("------------------------ Player " + playerUUID + " ------------------------")
 				_, err := db.CheckAndInsertPlayerWithPlayerUUID(playerUUID, 1) // 1 is the ID of the server "La Vanilla", wich will put Minecraft as the game. Not a good practice, but it's a quick fix cause i'm tired.
 				if err != nil {
+					fmt.Println("❌ Error while checking or inserting the player " + playerUUID + " " + err.Error())
+					nbPlayerSavesFailed++
 					return fmt.Errorf("FAILED TO CHECK OR INSERT PLAYER: %v", err)
 				}
 
@@ -108,23 +116,47 @@ func StartPeriodicTask(PeriodicEventsMin int) error {
 					fmt.Println("Player " + playerUUID + " statistics already exists, they will be updated.")
 					err := db.UpdateMinecraftPlayerGameStatistics(server.ID, playerUUID, playerStats)
 					if err != nil {
+						nbPlayerSavesFailed++
 						fmt.Println(err)
 					}
 				} else {
 					fmt.Println("Player " + playerUUID + " statistics doesn't exist, they will be created.")
 					err := db.SaveMinecraftPlayerGameStatistics(server.ID, playerUUID, playerStats)
 					if err != nil {
+						nbPlayerSavesFailed++
 						fmt.Println(err)
 					}
 				}
 
-				err = discord.SendDiscordEmbed(config.AppConfig.Bots["mineotterBot"], config.AppConfig.DiscordChannels.ServerStatusChannelID, "♟ Minecraft statistics update", "TODO", "#9adfba")
 				if err != nil {
 					fmt.Println(err)
 				}
 			}
 		}
 		fmt.Println("*-*-*-*-*-*-*-*-* ✔ Minecraft players stats are saved *-*-*-*-*-*-*-*-*")
+
+		var serverThatFailedSavesListString string
+		if len(serverThatFailedSavesList) > 0 {
+			serverThatFailedSavesListString = "Servers that failed to give player saves list : " + strings.Join(serverThatFailedSavesList, ", ")
+			color = "#ff0000"
+		} else {
+			serverThatFailedSavesListString = "No server failed to give player saves list."
+			color = "#9adfba"
+		}
+
+		if nbPlayerSavesFailed > 0 {
+			color = "#ff8c00"
+		}
+
+		err = discord.SendDiscordEmbed(config.AppConfig.Bots["mineotterBot"], config.AppConfig.DiscordChannels.ServerStatusChannelID,
+			"♟ Minecraft statistics update", "Minecraft players stats are saved.\n\n"+
+				fmt.Sprint(nbPlayerSaves)+" players stats updated from "+fmt.Sprint(len(serverList))+" servers.\n"+
+				"Failed to save stats for "+fmt.Sprint(nbPlayerSavesFailed)+" players.\n\n"+
+				serverThatFailedSavesListString, color)
+
+		if err != nil {
+			fmt.Println("❌ Error while sending the Discord message " + err.Error())
+		}
 	}
 
 	return nil

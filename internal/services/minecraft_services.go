@@ -46,7 +46,7 @@ func GetMinecraftPlayerUUID(playerName string) (string, error) {
 
 // GetMinecraftPlayerServerSave gets a list of the Minecraft player UUIDs inside a server directory
 func GetMinecraftPlayerServerUUIDSaves(server models.Server) ([]string, error) {
-	fmt.Println("Getting Minecraft player saves for server " + server.Nom + "...")
+	fmt.Println("Getting Minecraft player saves for server " + server.Nom + " inside directory " + server.PathServ + server.NomMonde + "/stats ...")
 
 	if server.Jeu != "Minecraft" {
 		return nil, fmt.Errorf("%s IS NOT A MINECRAFT SERVER", server.Nom)
