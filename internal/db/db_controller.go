@@ -188,7 +188,7 @@ Table joueurs_connections_log {
 // SaveConnectionLog saves a connection log for a player
 func SaveConnectionLog(playerName string, serverID int) error {
 	// Check if the player exists and insert it if it doesn't
-	_, err := CheckAndInsertPlayer(playerName, serverID)
+	_, err := CheckAndInsertPlayerWithPlayerName(playerName, serverID)
 	if err != nil {
 		return fmt.Errorf("FAILED TO CHECK OR INSERT PLAYER: %v", err)
 	}
@@ -273,42 +273,51 @@ func GetAllMinecraftPlayers() ([]models.Player, error) {
 }
 
 // CheckAndInsertPlayer checks if a player exists in the database and inserts it if it doesn't
-func CheckAndInsertPlayer(playerName string, serverID int) (int, error) {
+func CheckAndInsertPlayerWithPlayerName(playerName string, serverID int) (int, error) {
+	getPlayerUUID, err := GetPlayerAccountIdByPlayerName(playerName, "Minecraft")
+	if err != nil {
+		return -1, fmt.Errorf("FAILED TO GET PLAYER UUID: %v", err)
+	}
+
+	return CheckAndInsertPlayerWithPlayerUUID(getPlayerUUID, serverID)
+}
+
+// CheckAndInsertPlayerWithPlayerUUID checks if a player exists in the database and inserts it if it doesn't
+func CheckAndInsertPlayerWithPlayerUUID(playerUUID string, serverID int) (int, error) {
+	// Check that playerUUID is not empty
+	if playerUUID == "" || playerUUID == "null" {
+		return -1, fmt.Errorf("PLAYER UUID IS EMPTY")
+	}
+
 	// Get server game
 	jeu, err := GetServerGameById(serverID)
 	if err != nil {
 		return -1, fmt.Errorf("FAILED TO GET SERVER GAME: %v", err)
 	}
 
-	// Get player account ID
-	playerAcountID, err := GetPlayerAccountIdByPlayerName(playerName, jeu)
-	if err != nil {
-		return -1, fmt.Errorf("FAILED TO GET PLAYER ACCOUNT ID: %v", err)
-	}
-
 	// Check if the player already exists
-	fmt.Println("Checking if player exists...")
-	playerID, _ := GetPlayerIdByAccountId(playerAcountID)
+	playerID, err := GetPlayerIdByAccountId(playerUUID)
 	if playerID != -1 {
-		fmt.Printf("Player already exists with ID (this is not a problem) %d", playerID)
+		fmt.Printf("Player already exists with ID (this is not a problem) %d\n", playerID)
 		return playerID, nil // Player already exists, return its ID
+	} else if err != nil {
+		fmt.Println("FAILED TO GET PLAYER ID FOR INSERT CHECK:", err)
 	}
 
 	// If the player does not exist, insert it
-	fmt.Println("Player does not exist. Inserting new player...")
+	fmt.Println("Player does not exist. Inserting new player.")
 	insertQuery := "INSERT INTO joueurs (utilisateur_id, jeu, compte_id, premiere_co, derniere_co) VALUES (NULL, ?, ?, NOW(), NOW())"
-	_, err = db.Exec(insertQuery, jeu, playerAcountID)
+	_, err = db.Exec(insertQuery, jeu, playerUUID)
 	if err != nil {
 		return -1, fmt.Errorf("FAILED TO INSERT PLAYER: %v", err)
 	}
-	fmt.Println("Player successfully inserted !")
 
 	// Return the player ID of the newly inserted player
-	playerID, err = GetPlayerIdByAccountId(playerAcountID)
+	playerID, err = GetPlayerIdByAccountId(playerUUID)
 	if err != nil {
 		return -1, fmt.Errorf("FAILED TO GET PLAYER ID: %v", err)
 	} else if playerID == -1 {
-		return -1, fmt.Errorf("PLAYER ID NOT FOUND")
+		return -1, fmt.Errorf("PLAYER ID NOT FOUND AFTER INSERT")
 	}
 
 	return playerID, nil
@@ -326,6 +335,57 @@ func UpdatePlayerLastConnection(playerID int) error {
 	return nil
 }
 
+// GetPlayerById returns a player from the database by its ID
+func GetPlayerById(playerID int) (models.Player, error) {
+	query := "SELECT * FROM joueurs WHERE id = ?"
+	var player models.Player
+
+	err := db.QueryRow(query, playerID).Scan(&player.ID, &player.UtilisateurID, &player.Jeu, &player.CompteID, &player.PremiereCo, &player.DerniereCo)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return player, fmt.Errorf("PLAYER NOT FOUND: %d", playerID)
+		}
+		return player, fmt.Errorf("FAILED TO GET PLAYER BY ID: %v", err)
+	}
+
+	return player, nil
+}
+
+// GetPlayerByUUID returns a player from the database by its UUID
+func GetPlayerByUUID(playerUUID string) (models.Player, error) {
+	query := `
+        SELECT id, utilisateur_id, jeu, compte_id, premiere_co, derniere_co 
+        FROM joueurs 
+        WHERE compte_id = ?`
+
+	var player models.Player
+	var utilisateurID sql.NullInt64
+
+	err := db.QueryRow(query, playerUUID).Scan(
+		&player.ID,
+		&utilisateurID,
+		&player.Jeu,
+		&player.CompteID,
+		&player.PremiereCo,
+		&player.DerniereCo,
+	)
+
+	if utilisateurID.Valid {
+		player.UtilisateurID = int(utilisateurID.Int64)
+	} else {
+		player.UtilisateurID = -1 // Set to -1 if NULL
+	}
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return player, fmt.Errorf("player not found: %s", playerUUID)
+		}
+		return player, fmt.Errorf("failed to get player by UUID: %w", err)
+	}
+
+	return player, nil
+}
+
 // Getter to get the player ID by the account ID
 func GetPlayerIdByAccountId(accountId any) (int, error) {
 	query := "SELECT id FROM joueurs WHERE compte_id = ?"
@@ -334,9 +394,8 @@ func GetPlayerIdByAccountId(accountId any) (int, error) {
 	err := db.QueryRow(query, accountId).Scan(&playerID)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return -1, nil
+			return -1, fmt.Errorf("PLAYER ISN'T IN THE DATABASE")
 		}
-		fmt.Println("FAILED TO GET PLAYER ID:", err)
 		return -1, fmt.Errorf("FAILED TO GET PLAYER ID: %v", err)
 	}
 
@@ -382,13 +441,14 @@ Table joueurs_stats {
 }
 ----------------------------------------------------- */
 
+// CheckMinecraftPlayerGameStatisticsExists checks if the game statistics of a Minecraft player already exists
 func CheckMinecraftPlayerGameStatisticsExists(playerUUID string, serverID int) bool {
 	query := "SELECT COUNT(*) FROM joueurs_stats WHERE compte_id = ? AND serveur_id = ?"
 	var count int
 
 	err := db.QueryRow(query, playerUUID, serverID).Scan(&count)
 	if err != nil {
-		fmt.Println("FAILED TO CHECK PLAYER STATISTICS:", err)
+		fmt.Println("FAILED TO CHECK IF PLAYER STATISTICS EXISTS:", err)
 		return false
 	}
 
@@ -397,6 +457,12 @@ func CheckMinecraftPlayerGameStatisticsExists(playerUUID string, serverID int) b
 
 // SaveMinecraftPlayerGameStatistics saves the game statistics of a Minecraft player
 func SaveMinecraftPlayerGameStatistics(serverID int, playerUUID string, playerStats models.MinecraftPlayerGameStatistics) error {
+	// We fist need to check if the player already exists in the database
+	_, err := CheckAndInsertPlayerWithPlayerUUID(playerUUID, serverID)
+	if err != nil {
+		return fmt.Errorf("FAILED TO CHECK OR INSERT PLAYER: %v", err)
+	}
+
 	// Prepare the SQL query
 	query := `
 		INSERT INTO joueurs_stats (

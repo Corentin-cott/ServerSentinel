@@ -69,18 +69,33 @@ func StartPeriodicTask(PeriodicEventsMin int) error {
 
 		// Get the minecraft player game statistics
 		fmt.Println("Saving Minecraft players game statistics...")
-		serverListe, err := db.GetAllMinecraftServers()
+		serverList, err := db.GetAllMinecraftServers()
 		if err != nil {
 			fmt.Println("❌ Error while getting the Minecraft servers list " + err.Error())
 		}
-		playerListe, err := db.GetAllMinecraftPlayers()
-		if err != nil {
-			fmt.Println("❌ Error while getting the Minecraft players list " + err.Error())
-		}
 
-		for _, server := range serverListe {
-			fmt.Println("Server : " + server.Nom)
-			for _, player := range playerListe {
+		for _, server := range serverList {
+			fmt.Println("*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-* Server " + server.Nom + " *-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*")
+			playerUUIDList, err := services.GetMinecraftPlayerServerUUIDSaves(server)
+			if err != nil {
+				fmt.Println("❌ Error while getting the Minecraft players list " + err.Error())
+			}
+
+			for _, playerUUID := range playerUUIDList {
+				fmt.Println("------------------------ Player " + playerUUID + " ------------------------")
+				_, err := db.CheckAndInsertPlayerWithPlayerUUID(playerUUID, 1) // 1 is the ID of the server "La Vanilla", wich will put Minecraft as the game. Not a good practice, but it's a quick fix cause i'm tired.
+				if err != nil {
+					return fmt.Errorf("FAILED TO CHECK OR INSERT PLAYER: %v", err)
+				}
+
+				player, err := db.GetPlayerByUUID(playerUUID)
+				if player.UtilisateurID == -1 {
+					fmt.Println("Player " + playerUUID + " doesn't have a user account linked. This is not a problem.")
+				}
+				if err != nil {
+					fmt.Println(err)
+				}
+
 				playerID := player.ID
 				playerUUID := player.CompteID
 
@@ -90,18 +105,17 @@ func StartPeriodicTask(PeriodicEventsMin int) error {
 				}
 
 				if db.CheckMinecraftPlayerGameStatisticsExists(playerUUID, server.ID) {
-					fmt.Println("Player " + playerUUID + " statistics already exists, updating...")
+					fmt.Println("Player " + playerUUID + " statistics already exists, they will be updated.")
 					err := db.UpdateMinecraftPlayerGameStatistics(server.ID, playerUUID, playerStats)
 					if err != nil {
 						fmt.Println(err)
 					}
-					fmt.Println("✔ Player " + playerUUID + " statistics updated successfully.")
 				} else {
+					fmt.Println("Player " + playerUUID + " statistics doesn't exist, they will be created.")
 					err := db.SaveMinecraftPlayerGameStatistics(server.ID, playerUUID, playerStats)
 					if err != nil {
 						fmt.Println(err)
 					}
-					fmt.Println("✔ Player " + playerUUID + " statistics saved successfully.")
 				}
 
 				err = discord.SendDiscordEmbed(config.AppConfig.Bots["mineotterBot"], config.AppConfig.DiscordChannels.ServerStatusChannelID, "♟ Minecraft statistics update", "TODO", "#9adfba")
@@ -110,7 +124,7 @@ func StartPeriodicTask(PeriodicEventsMin int) error {
 				}
 			}
 		}
-		fmt.Println("✔ Minecraft players game statistics saved successfully.")
+		fmt.Println("*-*-*-*-*-*-*-*-* ✔ Minecraft players stats are saved *-*-*-*-*-*-*-*-*")
 	}
 
 	return nil

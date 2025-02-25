@@ -1,14 +1,31 @@
 {
-  "logPath": "/var/log/serversentinel/",
-  "bot" : {
-    "botToken" : "# Bot token here",
-    "discordChannelID": "# Channel id for the trigger action method \"SendToDiscord()\""
-  },
   "db": {
     "host": "127.0.0.1",
     "port": 3306,
     "user": "# serveursentinel or any user with the right permissions",
     "password": "# Database user password here",
     "name": "# Database name here"
-  }
+  },
+  "bots": {
+    "arisoutreBot" : {
+      "activated" : false,
+      "botToken" : "# Bot token here"
+    },
+    "mineotterBot" : {
+      "activated" : false,
+      "botToken" : "# Bot token here"
+    },
+    "multiloutreBot" : {
+      "activated" : false,
+      "botToken" : "# Bot token here"
+    }
+  },
+  "discordChannels" : {
+    "serverStatusChannelID": "# Channel where periodic events status are sent",
+    "botAdminChannelID": "# Admin channel for warnings, errors, ...",
+    "minecraftChatChannelID": "# Chat channel between minecraft and discord",
+    "palworldChatChannelID": "# Chat channel between palworld and discord"
+  },
+  "logPath": "/var/log/serversentinel/",
+  "periodicEventsMin": 1
 }
