@@ -7,6 +7,7 @@ import (
 
 	"github.com/Corentin-cott/ServeurSentinel/config"
 	"github.com/Corentin-cott/ServeurSentinel/internal/console"
+	"github.com/Corentin-cott/ServeurSentinel/internal/db"
 	"github.com/Corentin-cott/ServeurSentinel/internal/discord"
 )
 
@@ -62,6 +63,13 @@ func GetTriggers(selectedTriggers []string) []console.Trigger {
 					return
 				}
 				discord.SendDiscordMessage(config.AppConfig.Bots["mineotterBot"], config.AppConfig.DiscordChannels.MinecraftChatChannelID, matches[2]+" à rejoint le serveur")
+				playerID, err := db.CheckAndInsertPlayerWithPlayerName(matches[2], 1, "now")
+				if err != nil {
+					fmt.Println("ERROR WHILE CHECKING OR INSERTING PLAYER" + matches[2] + " IN DATABASE: " + err.Error())
+				}
+				serverID := 1 // Temporary solution
+				db.SaveConnectionLog(playerID, serverID)
+				db.UpdatePlayerLastConnection(playerID)
 				WriteToLogFile("/var/log/serversentinel/playerjoined.log", matches[2])
 			},
 		},

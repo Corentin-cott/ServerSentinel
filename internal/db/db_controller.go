@@ -186,42 +186,13 @@ Table joueurs_connections_log {
 ----------------------------------------------------- */
 
 // SaveConnectionLog saves a connection log for a player
-func SaveConnectionLog(playerName string, serverID int) error {
-	// Check if the player exists and insert it if it doesn't
-	_, err := CheckAndInsertPlayerWithPlayerName(playerName, serverID, "now")
+func SaveConnectionLog(playerID int, serverID int) error {
+	query := "INSERT INTO joueurs_connections_log (serveur_id, joueurs_id, date) VALUES (?, ?, ?)"
+	_, err := db.Exec(query, serverID, playerID, GetGoodDatetime())
 	if err != nil {
-		return fmt.Errorf("FAILED TO CHECK OR INSERT PLAYER: %v", err)
+		return fmt.Errorf("FAILED TO SAVE CONNECTION LOG: %v", err)
 	}
 
-	// Get player account ID with the player name
-	playerAcountID, err := GetPlayerAccountIdByPlayerName(playerName, "Minecraft")
-	if err != nil {
-		return fmt.Errorf("FAILED TO GET PLAYER ACCOUNT ID: %v", err)
-	}
-
-	// Get player ID with the player account ID
-	playerID, err := GetPlayerIdByAccountId(playerAcountID)
-	if err != nil {
-		return fmt.Errorf("FAILED TO GET PLAYER ID: %v", err)
-	} else if playerID == -1 {
-		return fmt.Errorf("PLAYER ID NOT FOUND")
-	}
-
-	// Update the last connection date of the player
-	err = UpdatePlayerLastConnection(playerID)
-	if err != nil {
-		return fmt.Errorf("FAILED TO UPDATE LAST CONNECTION: %v", err)
-	}
-
-	// Insert log in the database
-	insertQuery := `INSERT INTO joueurs_connections_log (serveur_id, compte_id, date) VALUES (?, ?, NOW())`
-	fmt.Println("Inserting connection log for player", playerID)
-	_, err = db.Exec(insertQuery, serverID, playerID)
-	if err != nil {
-		return fmt.Errorf("FAILED TO INSERT CONNECTION LOG: %v", err)
-	}
-
-	fmt.Println("Connection log successfully saved.")
 	return nil
 }
 
@@ -282,6 +253,28 @@ func CheckAndInsertPlayerWithPlayerName(playerName string, serverID int, timeCon
 	return CheckAndInsertPlayerWithPlayerUUID(getPlayerUUID, serverID, timeConf)
 }
 
+// InsertPlayer inserts a player in the database. if utilisateurID is -1, then null is inserted
+func InsertPlayer(utilisateurID int, jeu string, compteID string, premiereCo time.Time, derniereCo time.Time) (int, error) {
+	var insertQuery string
+	if utilisateurID == -1 {
+		insertQuery = "INSERT INTO joueurs (utilisateur_id, jeu, compte_id, premiere_co, derniere_co) VALUES (null, ?, ?, ?, ?)"
+	} else {
+		insertQuery = "INSERT INTO joueurs (utilisateur_id, jeu, compte_id, premiere_co, derniere_co) VALUES (?, ?, ?, ?, ?)"
+	}
+
+	_, err := db.Exec(insertQuery, utilisateurID, jeu, compteID, premiereCo, derniereCo)
+	if err != nil {
+		return -1, fmt.Errorf("FAILED TO INSERT PLAYER: %v", err)
+	}
+
+	playerID, err := GetPlayerIdByAccountId(compteID)
+	if err != nil {
+		return -1, fmt.Errorf("FAILED TO GET PLAYER ID: %v", err)
+	}
+
+	return playerID, nil
+}
+
 // CheckAndInsertPlayerWithPlayerUUID checks if a player exists in the database and inserts it if it doesn't
 func CheckAndInsertPlayerWithPlayerUUID(playerUUID string, serverID int, timeConf string) (int, error) {
 	var datetime time.Time
@@ -303,28 +296,17 @@ func CheckAndInsertPlayerWithPlayerUUID(playerUUID string, serverID int, timeCon
 	}
 
 	// Check if the player already exists
-	playerID, err := GetPlayerIdByAccountId(playerUUID)
+	playerID, _ := GetPlayerIdByAccountId(playerUUID)
 	if playerID != -1 {
 		fmt.Printf("Player already exists with ID (this is not a problem) %d\n", playerID)
 		return playerID, nil // Player already exists, return its ID
-	} else if err != nil {
-		fmt.Println("FAILED TO GET PLAYER ID FOR INSERT CHECK:", err)
 	}
 
 	// If the player does not exist, insert it
 	fmt.Println("Player does not exist. Inserting new player.")
-	insertQuery := "INSERT INTO joueurs (utilisateur_id, jeu, compte_id, premiere_co, derniere_co) VALUES (NULL, ?, ?, ?, ?)"
-	_, err = db.Exec(insertQuery, jeu, playerUUID, datetime, datetime)
+	playerID, err = InsertPlayer(-1, jeu, playerUUID, datetime, datetime)
 	if err != nil {
 		return -1, fmt.Errorf("FAILED TO INSERT PLAYER: %v", err)
-	}
-
-	// Return the player ID of the newly inserted player
-	playerID, err = GetPlayerIdByAccountId(playerUUID)
-	if err != nil {
-		return -1, fmt.Errorf("FAILED TO GET PLAYER ID: %v", err)
-	} else if playerID == -1 {
-		return -1, fmt.Errorf("PLAYER ID NOT FOUND AFTER INSERT")
 	}
 
 	return playerID, nil
