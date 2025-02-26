@@ -56,18 +56,18 @@ func main() {
 	fmt.Println("✔ Triggers loaded : ", len(triggersList), " triggers.")
 	processLogFiles("/opt/serversentinel/serverslog/", triggersList)
 
-	fmt.Println("Server Sentinel daemon stopped.")
+	fmt.Println("♦ Server Sentinel daemon stopped.")
 }
 
 // Function to process all log files in a directory
 func processLogFiles(logDirPath string, triggersList []console.Trigger) {
 	logFiles, err := filepath.Glob(filepath.Join(logDirPath, "*.log"))
 	if err != nil {
-		log.Fatalf("FATAL ERROR WHEN GETTING LOG FILES: %v", err)
+		log.Fatalf("✘ FATAL ERROR WHEN GETTING LOG FILES: %v", err)
 	}
 
 	if len(logFiles) == 0 {
-		log.Println("⚠ No log files found in the directory, did you forget to redirect the logs to the folder?")
+		log.Println("✘ No log files found in the directory, did you forget to redirect the logs to the folder?")
 		return
 	}
 
@@ -81,7 +81,7 @@ func processLogFiles(logDirPath string, triggersList []console.Trigger) {
 			defer wg.Done()
 			err := console.StartFileLogListener(file, triggersList)
 			if err != nil {
-				log.Printf("Error with file %s: %v\n", file, err)
+				log.Printf("✘ Error with file %s: %v\n", file, err)
 			}
 		}(logFile)
 	}
