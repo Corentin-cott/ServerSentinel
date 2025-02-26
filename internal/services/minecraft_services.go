@@ -41,6 +41,9 @@ func GetMinecraftPlayerUUID(playerName string) (string, error) {
 		return "", fmt.Errorf("FAILED TO GET PLAYER UUID: %v", result)
 	}
 
+	// Format the UUID to the standard format
+	playerUUID = FormatMinecraftUUID(playerUUID)
+
 	fmt.Println("Player UUID retrieved successfully : " + playerUUID + " for player name : " + playerName)
 	return playerUUID, nil
 }
