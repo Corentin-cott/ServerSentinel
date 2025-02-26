@@ -188,7 +188,7 @@ Table joueurs_connections_log {
 // SaveConnectionLog saves a connection log for a player
 func SaveConnectionLog(playerName string, serverID int) error {
 	// Check if the player exists and insert it if it doesn't
-	_, err := CheckAndInsertPlayerWithPlayerName(playerName, serverID)
+	_, err := CheckAndInsertPlayerWithPlayerName(playerName, serverID, "now")
 	if err != nil {
 		return fmt.Errorf("FAILED TO CHECK OR INSERT PLAYER: %v", err)
 	}
@@ -273,17 +273,24 @@ func GetAllMinecraftPlayers() ([]models.Player, error) {
 }
 
 // CheckAndInsertPlayer checks if a player exists in the database and inserts it if it doesn't
-func CheckAndInsertPlayerWithPlayerName(playerName string, serverID int) (int, error) {
+func CheckAndInsertPlayerWithPlayerName(playerName string, serverID int, timeConf string) (int, error) {
 	getPlayerUUID, err := GetPlayerAccountIdByPlayerName(playerName, "Minecraft")
 	if err != nil {
 		return -1, fmt.Errorf("FAILED TO GET PLAYER UUID: %v", err)
 	}
 
-	return CheckAndInsertPlayerWithPlayerUUID(getPlayerUUID, serverID)
+	return CheckAndInsertPlayerWithPlayerUUID(getPlayerUUID, serverID, timeConf)
 }
 
 // CheckAndInsertPlayerWithPlayerUUID checks if a player exists in the database and inserts it if it doesn't
-func CheckAndInsertPlayerWithPlayerUUID(playerUUID string, serverID int) (int, error) {
+func CheckAndInsertPlayerWithPlayerUUID(playerUUID string, serverID int, timeConf string) (int, error) {
+	var datetime time.Time
+	if timeConf == "now" {
+		datetime = GetGoodDatetime()
+	} else {
+		datetime, _ = time.Parse("2006-01-02 15:04:05", "2000-01-01 00:00:00") // Default value if we don't know the time
+	}
+
 	// Check that playerUUID is not empty
 	if playerUUID == "" || playerUUID == "null" {
 		return -1, fmt.Errorf("PLAYER UUID IS EMPTY")
@@ -306,8 +313,8 @@ func CheckAndInsertPlayerWithPlayerUUID(playerUUID string, serverID int) (int, e
 
 	// If the player does not exist, insert it
 	fmt.Println("Player does not exist. Inserting new player.")
-	insertQuery := "INSERT INTO joueurs (utilisateur_id, jeu, compte_id, premiere_co, derniere_co) VALUES (NULL, ?, ?, NOW(), NOW())"
-	_, err = db.Exec(insertQuery, jeu, playerUUID)
+	insertQuery := "INSERT INTO joueurs (utilisateur_id, jeu, compte_id, premiere_co, derniere_co) VALUES (NULL, ?, ?, ?, ?)"
+	_, err = db.Exec(insertQuery, jeu, playerUUID, datetime, datetime)
 	if err != nil {
 		return -1, fmt.Errorf("FAILED TO INSERT PLAYER: %v", err)
 	}
@@ -457,12 +464,6 @@ func CheckMinecraftPlayerGameStatisticsExists(playerUUID string, serverID int) b
 
 // SaveMinecraftPlayerGameStatistics saves the game statistics of a Minecraft player
 func SaveMinecraftPlayerGameStatistics(serverID int, playerUUID string, playerStats models.MinecraftPlayerGameStatistics) error {
-	// We fist need to check if the player already exists in the database
-	_, err := CheckAndInsertPlayerWithPlayerUUID(playerUUID, serverID)
-	if err != nil {
-		return fmt.Errorf("FAILED TO CHECK OR INSERT PLAYER: %v", err)
-	}
-
 	// Prepare the SQL query
 	query := `
 		INSERT INTO joueurs_stats (
@@ -516,7 +517,7 @@ func SaveMinecraftPlayerGameStatistics(serverID int, playerUUID string, playerSt
 		mobKilledJSON, playerStats.BlocksDestroyed, playerStats.BlocksPlaced,
 		playerStats.TotalDistance, playerStats.DistanceByFoot, playerStats.DistanceByElytra,
 		playerStats.DistanceByFlight, itemsCraftedJSON, itemsBrokenJSON,
-		achievementsJSON, time.Now(), // Ensure time is correctly handled
+		achievementsJSON, GetGoodDatetime(),
 	)
 
 	if err != nil {
@@ -530,8 +531,7 @@ func SaveMinecraftPlayerGameStatistics(serverID int, playerUUID string, playerSt
 func UpdateMinecraftPlayerGameStatistics(serverID int, playerUUID string, playerStats models.MinecraftPlayerGameStatistics) error {
 	// Prepare the SQL query
 	query := `
-		UPDATE joueurs_stats
-		SET
+		UPDATE joueurs_stats SET
 			tmps_jeux = ?,
 			nb_mort = ?,
 			nb_kills = ?,
@@ -547,8 +547,7 @@ func UpdateMinecraftPlayerGameStatistics(serverID int, playerUUID string, player
 			item_broken = ?,
 			achievement = ?,
 			dern_enregistrment = ?
-		WHERE
-			serveur_id = ? AND compte_id = ?
+		WHERE compte_id = ? AND serveur_id = ?
 	`
 
 	// Convert JSON fields
@@ -578,7 +577,8 @@ func UpdateMinecraftPlayerGameStatistics(serverID int, playerUUID string, player
 		mobKilledJSON, playerStats.BlocksDestroyed, playerStats.BlocksPlaced,
 		playerStats.TotalDistance, playerStats.DistanceByFoot, playerStats.DistanceByElytra,
 		playerStats.DistanceByFlight, itemsCraftedJSON, itemsBrokenJSON,
-		achievementsJSON, time.Now(), serverID, playerUUID,
+		achievementsJSON, GetGoodDatetime(),
+		playerUUID, serverID,
 	)
 
 	if err != nil {
@@ -586,4 +586,9 @@ func UpdateMinecraftPlayerGameStatistics(serverID int, playerUUID string, player
 	}
 
 	return nil
+}
+
+func GetGoodDatetime() time.Time {
+	// Time of now + 1 hour. Not good practice, but it's a quick fix. Again. Yeah.
+	return time.Now().Add(time.Hour)
 }

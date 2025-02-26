@@ -15,7 +15,7 @@ import (
 )
 
 func main() {
-
+	fmt.Println(time.Now().Location())
 	fmt.Println("Starting the Server Sentinel daemon (" + time.Now().Format("02/01/2006 15:04:05") + ") ...")
 
 	// Load the configuration file

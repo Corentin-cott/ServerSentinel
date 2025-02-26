@@ -88,8 +88,21 @@ func StartPeriodicTask(PeriodicEventsMin int) error {
 			for _, playerUUID := range playerUUIDList {
 				nbPlayerSaves++
 
+				isValid, err := services.IsValidMinecraftUUID(playerUUID)
+				if err != nil {
+					fmt.Println("❌ Error while validating Minecraft UUID:", err)
+					continue
+				}
+				if !isValid {
+					fmt.Println("❌ Invalid Minecraft UUID : " + playerUUID + " for server " + server.Nom)
+					nbPlayerSavesFailed++
+
+					// Since the UUID is invalid, we skip the player and continue to the next one
+					continue
+				}
+
 				fmt.Println("------------------------ Player " + playerUUID + " ------------------------")
-				_, err := db.CheckAndInsertPlayerWithPlayerUUID(playerUUID, 1) // 1 is the ID of the server "La Vanilla", wich will put Minecraft as the game. Not a good practice, but it's a quick fix cause i'm tired.
+				_, err = db.CheckAndInsertPlayerWithPlayerUUID(playerUUID, 1, "nil") // 1 is the ID of the server "La Vanilla", wich will put Minecraft as the game. Not a good practice, but it's a quick fix cause i'm tired.
 				if err != nil {
 					fmt.Println("❌ Error while checking or inserting the player " + playerUUID + " " + err.Error())
 					nbPlayerSavesFailed++

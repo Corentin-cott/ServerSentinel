@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"regexp"
 
 	"github.com/Corentin-cott/ServeurSentinel/internal/models"
 )
@@ -120,9 +121,17 @@ func GetMinecraftPlayerGameStatistics(playerID int, playerUUID string, server mo
 		return 0, "", models.MinecraftPlayerGameStatistics{}, fmt.Errorf("FAILED TO UNMARSHAL PLAYER STATISTICS JSON: %v", err)
 	}
 
+	// Depending on the server version, the stats can be in different formats/keys
+	var play_time int
+	if rawStats.Stats.Custom["minecraft:play_time"] == 0 {
+		play_time = rawStats.Stats.Custom["minecraft:play_one_minute"]
+	} else {
+		play_time = rawStats.Stats.Custom["minecraft:play_time"]
+	}
+
 	// Map extracted data to your model
 	playerStats := models.MinecraftPlayerGameStatistics{
-		TimePlayed:       rawStats.Stats.Custom["minecraft:play_time"],
+		TimePlayed:       play_time,
 		Deaths:           rawStats.Stats.Custom["minecraft:deaths"],
 		Kills:            rawStats.Stats.Killed["minecraft:player"],
 		PlayerKills:      rawStats.Stats.Custom["minecraft:player_kills"],
@@ -147,6 +156,20 @@ func FormatMinecraftUUID(uuid string) string {
 		return uuid // Return as is if not in expected format
 	}
 	return uuid[:8] + "-" + uuid[8:12] + "-" + uuid[12:16] + "-" + uuid[16:20] + "-" + uuid[20:]
+}
+
+func IsValidMinecraftUUID(uuid string) (bool, error) {
+	if len(uuid) != 36 {
+		return false, fmt.Errorf("INVALID UUID LENGTH, EXPECTED 36 CHARACTERS, FOUND %d", len(uuid))
+	}
+
+	regex := `^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`
+	uuidBool := regexp.MustCompile(regex).MatchString(uuid)
+
+	if !uuidBool {
+		return false, fmt.Errorf("INVALID UUID FORMAT")
+	}
+	return uuidBool, nil
 }
 
 func sumValues(m map[string]int) int {
