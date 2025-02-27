@@ -65,10 +65,16 @@ func GetTriggers(selectedTriggers []string) []console.Trigger {
 				discord.SendDiscordMessage(config.AppConfig.Bots["mineotterBot"], config.AppConfig.DiscordChannels.MinecraftChatChannelID, matches[2]+" à rejoint le serveur")
 				playerID, err := db.CheckAndInsertPlayerWithPlayerName(matches[2], 1, "now")
 				if err != nil {
-					fmt.Println("ERROR WHILE CHECKING OR INSERTING PLAYER" + matches[2] + " IN DATABASE: " + err.Error())
+					fmt.Println("ERROR WHILE CHECKING OR INSERTING PLAYER " + matches[2] + " IN DATABASE: " + err.Error())
 				}
-				db.SaveConnectionLog(playerID, serverID)
-				db.UpdatePlayerLastConnection(playerID)
+				err = db.SaveConnectionLog(playerID, serverID)
+				if err != nil {
+					fmt.Println("ERROR WHILE SAVING CONNECTION LOG FOR PLAYER " + matches[2] + " IN DATABASE: " + err.Error())
+				}
+				err = db.UpdatePlayerLastConnection(playerID)
+				if err != nil {
+					fmt.Println("ERROR WHILE UPDATING LAST CONNECTION FOR PLAYER " + matches[2] + " IN DATABASE: " + err.Error())
+				}
 				WriteToLogFile("/var/log/serversentinel/playerjoined.log", matches[2])
 			},
 		},

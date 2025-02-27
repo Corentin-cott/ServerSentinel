@@ -187,11 +187,13 @@ Table joueurs_connections_log {
 
 // SaveConnectionLog saves a connection log for a player
 func SaveConnectionLog(playerID int, serverID int) error {
-	query := "INSERT INTO joueurs_connections_log (serveur_id, joueurs_id, date) VALUES (?, ?, ?)"
+	query := "INSERT INTO joueurs_connections_log (serveur_id, joueur_id, date) VALUES (?, ?, ?)"
 	_, err := db.Exec(query, serverID, playerID, GetGoodDatetime())
 	if err != nil {
 		return fmt.Errorf("FAILED TO SAVE CONNECTION LOG: %v", err)
 	}
+
+	fmt.Println("Connection log saved successfully for player ID", playerID)
 
 	return nil
 }
@@ -247,7 +249,7 @@ func GetAllMinecraftPlayers() ([]models.Player, error) {
 func CheckAndInsertPlayerWithPlayerName(playerName string, serverID int, timeConf string) (int, error) {
 	getPlayerUUID, err := GetPlayerAccountIdByPlayerName(playerName, "Minecraft")
 	if err != nil {
-		return -1, fmt.Errorf("FAILED TO GET PLAYER UUID: %v", err)
+		return -1, fmt.Errorf("FAILED TO GET PLAYER UUID BY PLAYER NAME: %v", err)
 	}
 
 	return CheckAndInsertPlayerWithPlayerUUID(getPlayerUUID, serverID, timeConf)
@@ -256,13 +258,14 @@ func CheckAndInsertPlayerWithPlayerName(playerName string, serverID int, timeCon
 // InsertPlayer inserts a player in the database. if utilisateurID is -1, then null is inserted
 func InsertPlayer(utilisateurID int, jeu string, compteID string, premiereCo time.Time, derniereCo time.Time) (int, error) {
 	var insertQuery string
+	var err error
 	if utilisateurID == -1 {
 		insertQuery = "INSERT INTO joueurs (utilisateur_id, jeu, compte_id, premiere_co, derniere_co) VALUES (null, ?, ?, ?, ?)"
+		_, err = db.Exec(insertQuery, jeu, compteID, premiereCo, derniereCo)
 	} else {
 		insertQuery = "INSERT INTO joueurs (utilisateur_id, jeu, compte_id, premiere_co, derniere_co) VALUES (?, ?, ?, ?, ?)"
+		_, err = db.Exec(insertQuery, utilisateurID, jeu, compteID, premiereCo, derniereCo)
 	}
-
-	_, err := db.Exec(insertQuery, utilisateurID, jeu, compteID, premiereCo, derniereCo)
 	if err != nil {
 		return -1, fmt.Errorf("FAILED TO INSERT PLAYER: %v", err)
 	}
@@ -303,10 +306,10 @@ func CheckAndInsertPlayerWithPlayerUUID(playerUUID string, serverID int, timeCon
 	}
 
 	// If the player does not exist, insert it
-	fmt.Println("Player does not exist. Inserting new player.")
+	fmt.Println("Player does not exist. Inserting new player:", playerUUID)
 	playerID, err = InsertPlayer(-1, jeu, playerUUID, datetime, datetime)
 	if err != nil {
-		return -1, fmt.Errorf("FAILED TO INSERT PLAYER: %v", err)
+		return -1, fmt.Errorf("ERROR: %v", err)
 	}
 
 	return playerID, nil
@@ -314,6 +317,10 @@ func CheckAndInsertPlayerWithPlayerUUID(playerUUID string, serverID int, timeCon
 
 // UpdatePlayerLastConnection updates the last connection date of a player
 func UpdatePlayerLastConnection(playerID int) error {
+	if playerID == -1 {
+		return fmt.Errorf("PLAYER ID IS -1, CANNOT UPDATE LAST CONNECTION")
+	}
+
 	fmt.Println("Updating last connection for player ID", playerID)
 	updateQuery := "UPDATE joueurs SET derniere_co = NOW() WHERE id = ?"
 	_, err := db.Exec(updateQuery, playerID)
