@@ -13,6 +13,7 @@ type Config struct {
 	Bots              map[string]models.BotConfig `json:"bots"`
 	DiscordChannels   models.DiscordChannels      `json:"discordChannels"`
 	DB                models.DatabaseConfig       `json:"db"`
+	PeriodicEvents    models.PeriodicEventsConfig `json:"periodicEvents"`
 	LogPath           string                      `json:"logPath"`
 	PeriodicEventsMin int                         `json:"periodicEventsMin"`
 }

@@ -23,6 +23,12 @@ type DiscordChannels struct {
 	PalworldChatChannelID  string `json:"palworldChatChannelID"`
 }
 
+// PeriodicEventsConfig is a struct that contains the configuration for the periodic events
+type PeriodicEventsConfig struct {
+	ServersCheckEnabled   bool `json:"serversCheckEnabled"`
+	MinecraftStatsEnabled bool `json:"minecraftStatsEnabled"`
+}
+
 // Type Player is a struct that represents a player in the database
 type Player struct {
 	ID            int

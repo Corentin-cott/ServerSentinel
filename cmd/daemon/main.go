@@ -22,6 +22,14 @@ func main() {
 	err := config.LoadConfig("/opt/serversentinel/config.json")
 	if err != nil {
 		log.Fatalf("FATAL ERROR LOADING CONFIG JSON FILE: %v", err)
+		return
+	}
+
+	if !config.AppConfig.PeriodicEvents.ServersCheckEnabled {
+		fmt.Println("♟ Periodic task : Servers check disabled.")
+	}
+	if !config.AppConfig.PeriodicEvents.MinecraftStatsEnabled {
+		fmt.Println("♟ Periodic task : Minecraft statistics retrieval disabled.")
 	}
 
 	// Check that the bot configuation exists
