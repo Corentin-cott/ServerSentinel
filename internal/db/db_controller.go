@@ -176,6 +176,38 @@ func GetServerGameById(serverID int) (string, error) {
 	return jeu, nil
 }
 
+// Getter to get the server name by the server id
+func GetServerNameById(serverID int) (string, error) {
+	query := "SELECT nom FROM serveurs WHERE id = ?"
+	var serverName string
+
+	err := db.QueryRow(query, serverID).Scan(&serverName)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return "", fmt.Errorf("SERVER NOT FOUND: %d", serverID)
+		}
+		return "", fmt.Errorf("FAILED TO GET SERVER NAME: %v", err)
+	}
+
+	return serverName, nil
+}
+
+// Getter to get the server color by the server id
+func GetServerColorById(serverID int) (string, error) {
+	query := "SELECT embed_color FROM serveurs WHERE id = ?"
+	var serverColor string
+
+	err := db.QueryRow(query, serverID).Scan(&serverColor)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return "", fmt.Errorf("SERVER NOT FOUND: %d", serverID)
+		}
+		return "", fmt.Errorf("FAILED TO GET SERVER COLOR: %v", err)
+	}
+
+	return serverColor, nil
+}
+
 /* -----------------------------------------------------
 Table joueurs_connections_log {
     id INT [pk, increment]

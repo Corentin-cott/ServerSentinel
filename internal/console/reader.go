@@ -32,7 +32,7 @@ func StartFileLogListener(logFilePath string, triggers []Trigger) error {
 		return fmt.Errorf("ERROR WHILE SEEKING TO THE END OF THE FILE NAMED %s : %v", logFilePath, err)
 	}
 
-	fmt.Printf("✔ Started listening to log file %s\n", logFilePath)
+	fmt.Printf("✔ Started listening to log file %s with %d triggers.\n", logFilePath, len(triggers))
 
 	// Read the file line by line
 	reader := bufio.NewReader(file)
