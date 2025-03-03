@@ -60,6 +60,30 @@ func GetTriggers(selectedTriggers []string) []console.Trigger {
 			},
 		},
 		{
+			// This trigger is used to detect when a player sends a message in the Minecraft chat
+			Name: "PlayerChatMinecraftServer",
+			Condition: func(line string) bool {
+				return strings.Contains(line, "<")
+			},
+			Action: func(line string, serverID int) {
+				// Player name
+				playerChatRegex := regexp.MustCompile(`\[(\d{2}:\d{2}:\d{2})\] \[Server thread/INFO](?: \[.+?/MinecraftServer])?: <(.+?)> (.+)`)
+				matches := playerChatRegex.FindStringSubmatch(line)
+				if len(matches) < 4 {
+					fmt.Println("ERROR WHILE EXTRACTING CHAT PLAYER NAME")
+					return
+				}
+				// Server infos
+				server, err := db.GetServerById(serverID)
+				if err != nil {
+					fmt.Println("ERROR WHILE GETTING SERVER BY ID FOR MINECRAFT SERVER STOPPED: " + err.Error())
+					return
+				}
+				// Action
+				discord.SendDiscordEmbed(config.AppConfig.Bots["mineotterBot"], config.AppConfig.DiscordChannels.MinecraftChatChannelID, matches[2]+": "+matches[3], "", server.EmbedColor)
+			},
+		},
+		{
 			// This trigger is used to detect when a player joins a Minecraft server
 			Name: "PlayerJoinedMinecraftServer",
 			Condition: func(line string) bool {
