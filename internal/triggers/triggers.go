@@ -32,7 +32,7 @@ func GetTriggers(selectedTriggers []string) []console.Trigger {
 			Name: "MinecraftServerStarted",
 			Condition: func(line string) bool {
 				// For this trigger, we'll need regex to extract the time and the server name
-				minecraftServerStartedRegex := regexp.MustCompile(`\[(\d{2}:\d{2}:\d{2})\] \[Server thread/INFO\]: Done \((\d+\.\d+)s\)! For help, type "help"`)
+				minecraftServerStartedRegex := regexp.MustCompile(`\[(\d{2}:\d{2}:\d{2})\] \[Server thread/INFO](?: \[.+?/MinecraftServer])?: Done \((\d+\.\d+)s\)! For help, type "help"`)
 				return minecraftServerStartedRegex.MatchString(line)
 			},
 			Action: func(line string, serverID int) {
@@ -67,7 +67,7 @@ func GetTriggers(selectedTriggers []string) []console.Trigger {
 			},
 			Action: func(line string, serverID int) {
 				// Player name
-				playerJoinedRegex := regexp.MustCompile(`\[(\d{2}:\d{2}:\d{2})\] \[Server thread/INFO\]: (.+) joined the game`)
+				playerJoinedRegex := regexp.MustCompile(`\[(\d{2}:\d{2}:\d{2})\] \[Server thread/INFO](?: \[.+?/MinecraftServer])?: (.+) joined the game`)
 				matches := playerJoinedRegex.FindStringSubmatch(line)
 				if len(matches) < 3 {
 					fmt.Println("ERROR WHILE EXTRACTING JOINED PLAYER NAME")
@@ -104,9 +104,9 @@ func GetTriggers(selectedTriggers []string) []console.Trigger {
 			},
 			Action: func(line string, serverID int) {
 				// Player name
-				playerDisconnectedRegex := regexp.MustCompile(`\[(\d{2}:\d{2}:\d{2})\] \[Server thread/INFO\]: (.+) lost connection: Disconnected`)
+				playerDisconnectedRegex := regexp.MustCompile(`\[\d{2}:\d{2}:\d{2}\] \[Server thread/INFO\].*?: ([^\s]+) (?:left the game|disconnected|lost connection)`)
 				matches := playerDisconnectedRegex.FindStringSubmatch(line)
-				if len(matches) < 3 {
+				if len(matches[1]) < 3 { // Minecraft player names are at least 3 characters long, so this filter prevents false positives
 					fmt.Println("ERROR WHILE EXTRACTING DISCONNECTED PLAYER NAME")
 					return
 				}
@@ -117,8 +117,8 @@ func GetTriggers(selectedTriggers []string) []console.Trigger {
 					return
 				}
 				// Action
-				discord.SendDiscordEmbed(config.AppConfig.Bots["mineotterBot"], config.AppConfig.DiscordChannels.MinecraftChatChannelID, matches[2]+" à quitté "+server.Nom, "", server.EmbedColor)
-				WriteToLogFile("/var/log/serversentinel/playerdisconnected.log", matches[2])
+				discord.SendDiscordEmbed(config.AppConfig.Bots["mineotterBot"], config.AppConfig.DiscordChannels.MinecraftChatChannelID, matches[1]+" à quitté "+server.Nom, "", server.EmbedColor)
+				WriteToLogFile("/var/log/serversentinel/playerdisconnected.log", matches[1])
 			},
 		},
 		{
