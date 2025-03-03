@@ -15,6 +15,20 @@ type BotConfig struct {
 	BotToken  string `json:"botToken"`
 }
 
+// EmbedConfig is a struct that contains the configuration for discord embeds
+type EmbedConfig struct {
+	Title       string `json:"title"`
+	TitleURL    string `json:"titleURL"`
+	Description string `json:"description"`
+	Color       string `json:"color"`
+	Thumbnail   string `json:"thumbnail"`
+	MainImage   string `json:"mainImage"`
+	Footer      string `json:"footer"`
+	Author      string `json:"author"`
+	AuthorIcon  string `json:"authorIcon"`
+	Timestamp   bool   `json:"timestamp"`
+}
+
 // DiscordChannels is a struct that contains the configuration for the Discord channels
 type DiscordChannels struct {
 	BotAdminChannelID      string `json:"botAdminChannelID"`

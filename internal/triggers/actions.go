@@ -23,9 +23,3 @@ func WriteToLogFile(logPath string, line string) error {
 	}
 	return nil
 }
-
-// SendToServer sends a message to a server
-func SendToServer(serverID int, serverGame string, message string) error {
-	// Not implemented yet
-	return fmt.Errorf("ERROR: NOT IMPLEMENTED YET")
-}

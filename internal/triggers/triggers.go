@@ -9,6 +9,8 @@ import (
 	"github.com/Corentin-cott/ServeurSentinel/internal/console"
 	"github.com/Corentin-cott/ServeurSentinel/internal/db"
 	"github.com/Corentin-cott/ServeurSentinel/internal/discord"
+	"github.com/Corentin-cott/ServeurSentinel/internal/models"
+	"github.com/Corentin-cott/ServeurSentinel/internal/services"
 )
 
 // GetTriggers returns the list of triggers filtered by names
@@ -80,7 +82,38 @@ func GetTriggers(selectedTriggers []string) []console.Trigger {
 					return
 				}
 				// Action
-				discord.SendDiscordEmbed(config.AppConfig.Bots["mineotterBot"], config.AppConfig.DiscordChannels.MinecraftChatChannelID, matches[2], matches[3], server.EmbedColor)
+				playerName := matches[2]
+				message := matches[3]
+
+				playerUUID, err := services.GetMinecraftPlayerUUID(playerName) // Get player UUID
+				if err != nil {
+					fmt.Printf("ERROR WHILE GETTING PLAYER UUID: %v\n", err)
+					return
+				}
+
+				playerHeadURL, err := services.GetMinecraftPlayerHeadURL(playerUUID) // Get player head URL
+				if err != nil {
+					fmt.Printf("ERROR WHILE GETTING PLAYER HEAD URL: %v\n", err)
+					return
+				}
+
+				embed := models.EmbedConfig{
+					Title:       playerName,
+					TitleURL:    "https://fr.namemc.com/profile/" + playerUUID,
+					Description: message,
+					Color:       server.EmbedColor,
+					Thumbnail:   playerHeadURL,
+					MainImage:   "",
+					Footer:      "Message venant de " + server.Nom,
+					Author:      "",
+					AuthorIcon:  "",
+					Timestamp:   false,
+				}
+				err = discord.SendDiscordEmbedWithModel(config.AppConfig.Bots["mineotterBot"], config.AppConfig.DiscordChannels.MinecraftChatChannelID, embed)
+				if err != nil {
+					fmt.Printf("ERROR WHILE SENDING DISCORD EMBED: %v", err)
+					return
+				}
 			},
 		},
 		{
