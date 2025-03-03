@@ -80,7 +80,7 @@ func GetTriggers(selectedTriggers []string) []console.Trigger {
 					return
 				}
 				// Action
-				discord.SendDiscordEmbed(config.AppConfig.Bots["mineotterBot"], config.AppConfig.DiscordChannels.MinecraftChatChannelID, matches[2]+": "+matches[3], "", server.EmbedColor)
+				discord.SendDiscordEmbed(config.AppConfig.Bots["mineotterBot"], config.AppConfig.DiscordChannels.MinecraftChatChannelID, matches[2], matches[3], server.EmbedColor)
 			},
 		},
 		{
