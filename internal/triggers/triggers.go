@@ -28,6 +28,19 @@ func GetTriggers(selectedTriggers []string) []models.Trigger {
 			},
 		},
 		{
+			// This trigger is used to detect when a player sends a message in any server chat
+			Name: "PlayerChatInServer",
+			Condition: func(line string) bool {
+				return isPlayerMessage(line)
+			},
+			Action: func(line string, serverID int) {
+				err := PlayerMessageAction(line, serverID)
+				if err != nil {
+					fmt.Println("ERROR WHILE PROCESSING PLAYER MESSAGE: " + err.Error())
+				}
+			},
+		},
+		{
 			// This trigger is used to detect when a minecraft server is started
 			Name: "MinecraftServerStarted",
 			Condition: func(line string) bool {
@@ -45,19 +58,6 @@ func GetTriggers(selectedTriggers []string) []models.Trigger {
 					return
 				}
 				discord.SendDiscordEmbed(config.AppConfig.Bots["mineotterBot"], config.AppConfig.DiscordChannels.MinecraftChatChannelID, server.Nom+" viens d'ouvrir !", "Connectez-vous !\nLe serveur "+server.Jeu+" est en ligne !", server.EmbedColor)
-			},
-		},
-		{
-			// This trigger is used to detect when a player sends a message in the Minecraft chat
-			Name: "PlayerChatMinecraftServer",
-			Condition: func(line string) bool {
-				return isPlayerMessage(line)
-			},
-			Action: func(line string, serverID int) {
-				err := PlayerMessageAction(line, serverID)
-				if err != nil {
-					fmt.Println("ERROR WHILE PROCESSING PLAYER MESSAGE: " + err.Error())
-				}
 			},
 		},
 		{
@@ -110,6 +110,39 @@ func GetTriggers(selectedTriggers []string) []models.Trigger {
 					return
 				}
 				discord.SendDiscordEmbed(config.AppConfig.Bots["multiloutreBot"], config.AppConfig.DiscordChannels.PalworldChatChannelID, server.Nom+" viens d'ouvrir !", "Connectez-vous !\nLe serveur "+server.Jeu+" est en ligne !", server.EmbedColor)
+			},
+		},
+		{
+			// This trigger is used to detect when a player joins a Palworld server
+			Name: "PlayerJoinedPalworldServer",
+			Condition: func(line string) bool {
+				if isPlayerMessage(line) {
+					return false
+				}
+				match, _ := regexp.MatchString(`\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\] \[LOG\] .*? \d{1,3}(\.\d{1,3}){3} connected the server\. \(User id: .*?\)`, line)
+				return match
+			},
+			Action: func(line string, serverID int) {
+				err := PlayerJoinedAction(line, serverID)
+				if err != nil {
+					fmt.Println("ERROR WHILE PROCESSING PLAYER JOINED: " + err.Error())
+				}
+			},
+		},
+		{
+			// This trigger is used to detect when a player disconnects from a Palworld server
+			Name: "PlayerDisconnectedPalworldServer",
+			Condition: func(line string) bool {
+				if isPlayerMessage(line) {
+					return false
+				}
+				return strings.Contains(line, "left the server.")
+			},
+			Action: func(line string, serverID int) {
+				err := PlayerLeftAction(line, serverID)
+				if err != nil {
+					fmt.Println("ERROR WHILE PROCESSING PLAYER DISCONNECTED: " + err.Error())
+				}
 			},
 		},
 	}
