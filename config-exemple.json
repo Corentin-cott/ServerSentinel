@@ -26,6 +26,10 @@
     "minecraftChatChannelID": "# Chat channel between minecraft and discord",
     "palworldChatChannelID": "# Chat channel between palworld and discord"
   },
+  "periodicEvents": {
+    "serversCheckEnabled": true,
+    "minecraftStatsEnabled": false
+  },
   "logPath": "/var/log/serversentinel/",
-  "periodicEventsMin": 1
+  "periodicEventsMin": 360
 }

@@ -90,3 +90,11 @@ type MinecraftPlayerGameStatistics struct {
 	Achievements     map[string]bool
 	LastRecordedTime string
 }
+
+// Trigger is a struct that represents a trigger
+type Trigger struct {
+	Name      string            // Trigger name
+	Condition func(string) bool // Condition of the trigger
+	Action    func(string, int) // Function to execute when the condition is met
+	ServerID  int               // ID of the server
+}
