@@ -8,7 +8,6 @@ import (
 	"github.com/Corentin-cott/ServeurSentinel/config"
 	"github.com/Corentin-cott/ServeurSentinel/internal/console"
 	"github.com/Corentin-cott/ServeurSentinel/internal/db"
-	"github.com/Corentin-cott/ServeurSentinel/internal/discord"
 	periodic "github.com/Corentin-cott/ServeurSentinel/internal/events"
 	"github.com/Corentin-cott/ServeurSentinel/internal/triggers"
 )
@@ -56,9 +55,6 @@ func main() {
 		}
 	}()
 	fmt.Println("✔ Periodic service started, interval is set to", config.AppConfig.PeriodicEventsMin, "minutes.")
-
-	// Test the discord bot
-	discord.SendDiscordMessage(config.AppConfig.Bots["multiloutreBot"], config.AppConfig.DiscordChannels.MinecraftChatChannelID, "Mineotter parlait à moi <@383676607434457088>")
 
 	// Create a list of triggers and create a wait group
 	// triggersList := triggers.GetTriggers([]string{"MinecraftServerStarted", "MinecraftServerStopped", "PlayerJoinedMinecraftServer"}) // Example with selected triggers
