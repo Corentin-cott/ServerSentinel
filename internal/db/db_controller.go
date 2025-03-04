@@ -162,22 +162,6 @@ func GetServerByName(serverName string) (models.Server, error) {
 	return serv, nil
 }
 
-// Getter to get the server game by the server ID
-func GetServerGameById(serverID int) (string, error) {
-	query := "SELECT jeu FROM serveurs WHERE id = ?"
-	var jeu string
-
-	err := db.QueryRow(query, serverID).Scan(&jeu)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return "", fmt.Errorf("GAME NOT FOUND FOR SERVER ID: %d", serverID)
-		}
-		return "", fmt.Errorf("FAILED TO GET SERVER GAME: %v", err)
-	}
-
-	return jeu, nil
-}
-
 // Getter to get the server name by the server id
 func GetServerNameById(serverID int) (string, error) {
 	query := "SELECT nom FROM serveurs WHERE id = ?"
@@ -194,15 +178,31 @@ func GetServerNameById(serverID int) (string, error) {
 	return serverName, nil
 }
 
-// Getter to get the server color by the server id
-func GetServerColorById(serverID int) (string, error) {
-	query := "SELECT embed_color FROM serveurs WHERE id = ?"
-	var serverColor string
+// Getter to get the server game by the server ID
+func GetServerGameById(serverID int) (string, error) {
+	query := "SELECT jeu FROM serveurs WHERE id = ?"
+	var jeu string
 
-	err := db.QueryRow(query, serverID).Scan(&serverColor)
+	err := db.QueryRow(query, serverID).Scan(&jeu)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return "", fmt.Errorf("SERVER NOT FOUND: %d", serverID)
+			return "", fmt.Errorf("GAME NOT FOUND FOR SERVER ID: %d", serverID)
+		}
+		return "", fmt.Errorf("FAILED TO GET SERVER GAME: %v", err)
+	}
+
+	return jeu, nil
+}
+
+// Getter to get the server color by the server id
+func GetServerColorByName(serverName string) (string, error) {
+	query := "SELECT embed_color FROM serveurs WHERE nom = ?"
+	var serverColor string
+
+	err := db.QueryRow(query, serverName).Scan(&serverColor)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return "", fmt.Errorf("SERVER NOT FOUND: %s", serverName)
 		}
 		return "", fmt.Errorf("FAILED TO GET SERVER COLOR: %v", err)
 	}

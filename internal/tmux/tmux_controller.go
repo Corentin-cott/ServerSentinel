@@ -7,7 +7,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Corentin-cott/ServeurSentinel/config"
 	"github.com/Corentin-cott/ServeurSentinel/internal/db"
+	"github.com/Corentin-cott/ServeurSentinel/internal/discord"
 	"github.com/Corentin-cott/ServeurSentinel/internal/models"
 )
 
@@ -159,7 +161,7 @@ func StartServerTmux(sessionID int, server models.Server) error {
 
 	// Build the full command to start the server using its StartScript
 	command := fmt.Sprintf(
-		"cd %s && tmux new-session -d -s '%s' './%s | tee /opt/serversentinel/serverslog/%s.log'",
+		"cd %s && tmux new-session -d -s '%s' './%s | tee -a /opt/serversentinel/serverslog/%s.log'",
 		server.PathServ, server.Nom, server.StartScript, strconv.Itoa(sessionID),
 	)
 
@@ -208,6 +210,18 @@ func StopServerTmux(serverName string) error {
 		if err != nil {
 			return fmt.Errorf("ERROR WHILE STOPPING THE TMUX SESSION: %v", err)
 		}
+	}
+
+	// We send a discord message to the minecraft chat channel
+	server, err := db.GetServerByName(serverName)
+	if err != nil {
+		return fmt.Errorf("ERROR WHILE GETTING SERVER BY NAME: %v", err)
+	}
+
+	if server.Jeu == "Minecraft" {
+		discord.SendDiscordEmbed(config.AppConfig.Bots["mineotterBot"], config.AppConfig.DiscordChannels.MinecraftChatChannelID, serverName+" se ferme.", "Merci d'avoir joué !", server.EmbedColor)
+	} else {
+		discord.SendDiscordEmbed(config.AppConfig.Bots["multiloutreBot"], config.AppConfig.DiscordChannels.PalworldChatChannelID, serverName+" se ferme.", "Merci d'avoir joué !", server.EmbedColor)
 	}
 
 	fmt.Printf("✔ Server %s stopped\n", serverName)

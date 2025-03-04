@@ -38,12 +38,6 @@ func GetTriggers(selectedTriggers []string) []models.Trigger {
 				return match
 			},
 			Action: func(line string, serverID int) {
-				// Regexp to actually be sure the server is started
-				minecraftServerStartedRegex := regexp.MustCompile(`\[(\d{2}:\d{2}:\d{2})\] \[Server thread/INFO](?: \[.+?/MinecraftServer])?: Done \((\d+\.\d+)s\)! For help, type "help"`)
-				if !minecraftServerStartedRegex.MatchString(strings.TrimSpace(line)) {
-					return
-				}
-
 				// Server infos
 				server, err := db.GetServerById(serverID)
 				if err != nil {
@@ -115,7 +109,7 @@ func GetTriggers(selectedTriggers []string) []models.Trigger {
 					fmt.Println("ERROR WHILE GETTING SERVER BY ID FOR MINECRAFT SERVER STOPPED: " + err.Error())
 					return
 				}
-				discord.SendDiscordEmbed(config.AppConfig.Bots["mineotterBot"], config.AppConfig.DiscordChannels.PalworldChatChannelID, server.Nom+" viens d'ouvrir !", "Connectez-vous !\nLe serveur "+server.Jeu+" est en ligne !", server.EmbedColor)
+				discord.SendDiscordEmbed(config.AppConfig.Bots["multiloutreBot"], config.AppConfig.DiscordChannels.PalworldChatChannelID, server.Nom+" viens d'ouvrir !", "Connectez-vous !\nLe serveur "+server.Jeu+" est en ligne !", server.EmbedColor)
 			},
 		},
 	}

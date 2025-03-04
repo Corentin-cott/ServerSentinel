@@ -3,13 +3,12 @@ package main
 import (
 	"fmt"
 	"log"
-	"path/filepath"
-	"sync"
 	"time"
 
 	"github.com/Corentin-cott/ServeurSentinel/config"
 	"github.com/Corentin-cott/ServeurSentinel/internal/console"
 	"github.com/Corentin-cott/ServeurSentinel/internal/db"
+	"github.com/Corentin-cott/ServeurSentinel/internal/discord"
 	periodic "github.com/Corentin-cott/ServeurSentinel/internal/events"
 	"github.com/Corentin-cott/ServeurSentinel/internal/triggers"
 )
@@ -58,42 +57,14 @@ func main() {
 	}()
 	fmt.Println("✔ Periodic service started, interval is set to", config.AppConfig.PeriodicEventsMin, "minutes.")
 
+	// Test the discord bot
+	discord.SendDiscordMessage(config.AppConfig.Bots["multiloutreBot"], config.AppConfig.DiscordChannels.MinecraftChatChannelID, "Mineotter parlait à moi <@383676607434457088>")
+
 	// Create a list of triggers and create a wait group
 	// triggersList := triggers.GetTriggers([]string{"MinecraftServerStarted", "MinecraftServerStopped", "PlayerJoinedMinecraftServer"}) // Example with selected triggers
 	triggersList := triggers.GetTriggers([]string{})
 	fmt.Println("✔ Triggers loaded : ", len(triggersList), " triggers.")
-	processLogFiles("/opt/serversentinel/serverslog/", triggersList)
+	console.ProcessLogFiles("/opt/serversentinel/serverslog/", triggersList)
 
 	fmt.Println("♦ Server Sentinel daemon stopped.")
-}
-
-// Function to process all log files in a directory
-func processLogFiles(logDirPath string, triggersList []console.Trigger) {
-	logFiles, err := filepath.Glob(filepath.Join(logDirPath, "*.log"))
-	if err != nil {
-		log.Fatalf("✘ FATAL ERROR WHEN GETTING LOG FILES: %v", err)
-	}
-
-	if len(logFiles) == 0 {
-		log.Println("✘ No log files found in the directory, did you forget to redirect the logs to the folder?")
-		return
-	}
-
-	// Create a wait group
-	var wg sync.WaitGroup
-
-	// Start a goroutine for each log file
-	for _, logFile := range logFiles {
-		wg.Add(1)
-		go func(file string) {
-			defer wg.Done()
-			err := console.StartFileLogListener(file, triggersList)
-			if err != nil {
-				log.Printf("✘ Error with file %s: %v\n", file, err)
-			}
-		}(logFile)
-	}
-
-	// Wait for all goroutines to finish
-	wg.Wait()
 }
