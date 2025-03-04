@@ -3,8 +3,6 @@ package main
 import (
 	"fmt"
 	"log"
-	"path/filepath"
-	"sync"
 	"time"
 
 	"github.com/Corentin-cott/ServeurSentinel/config"
@@ -22,6 +20,14 @@ func main() {
 	err := config.LoadConfig("/opt/serversentinel/config.json")
 	if err != nil {
 		log.Fatalf("FATAL ERROR LOADING CONFIG JSON FILE: %v", err)
+		return
+	}
+
+	if !config.AppConfig.PeriodicEvents.ServersCheckEnabled {
+		fmt.Println("♟ Periodic task : Servers check disabled.")
+	}
+	if !config.AppConfig.PeriodicEvents.MinecraftStatsEnabled {
+		fmt.Println("♟ Periodic task : Minecraft statistics retrieval disabled.")
 	}
 
 	// Check that the bot configuation exists
@@ -54,38 +60,7 @@ func main() {
 	// triggersList := triggers.GetTriggers([]string{"MinecraftServerStarted", "MinecraftServerStopped", "PlayerJoinedMinecraftServer"}) // Example with selected triggers
 	triggersList := triggers.GetTriggers([]string{})
 	fmt.Println("✔ Triggers loaded : ", len(triggersList), " triggers.")
-	processLogFiles("/opt/serversentinel/serverslog/", triggersList)
+	console.ProcessLogFiles("/opt/serversentinel/serverslog/", triggersList)
 
 	fmt.Println("♦ Server Sentinel daemon stopped.")
-}
-
-// Function to process all log files in a directory
-func processLogFiles(logDirPath string, triggersList []console.Trigger) {
-	logFiles, err := filepath.Glob(filepath.Join(logDirPath, "*.log"))
-	if err != nil {
-		log.Fatalf("✘ FATAL ERROR WHEN GETTING LOG FILES: %v", err)
-	}
-
-	if len(logFiles) == 0 {
-		log.Println("✘ No log files found in the directory, did you forget to redirect the logs to the folder?")
-		return
-	}
-
-	// Create a wait group
-	var wg sync.WaitGroup
-
-	// Start a goroutine for each log file
-	for _, logFile := range logFiles {
-		wg.Add(1)
-		go func(file string) {
-			defer wg.Done()
-			err := console.StartFileLogListener(file, triggersList)
-			if err != nil {
-				log.Printf("✘ Error with file %s: %v\n", file, err)
-			}
-		}(logFile)
-	}
-
-	// Wait for all goroutines to finish
-	wg.Wait()
 }

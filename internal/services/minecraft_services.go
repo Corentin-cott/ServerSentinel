@@ -48,6 +48,25 @@ func GetMinecraftPlayerUUID(playerName string) (string, error) {
 	return playerUUID, nil
 }
 
+// GetMinecraftPlayerHeadURL gets the URL of the head of a Minecraft player by their UUID
+func GetMinecraftPlayerHeadURL(playerUUID string) (string, error) {
+	// Send a request to the Crafatar API to get the player head URL by their UUID
+	APIUrl := "https://minotar.net/helm/" + playerUUID + "/50.png"
+	fmt.Println("Getting Minecraft player head URL for player " + playerUUID + " with API URL : " + APIUrl + " ...")
+	resp, err := http.Get(APIUrl)
+	if err != nil {
+		return "", fmt.Errorf("FAILED TO SEND REQUEST TO CRAFATAR API: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK { // API returns an error
+		return "", fmt.Errorf("FAILED TO GET PLAYER HEAD URL, STATUS CODE: %d", resp.StatusCode)
+	}
+
+	fmt.Println("Player head URL retrieved successfully for player " + playerUUID + " : " + APIUrl)
+	return APIUrl, nil
+}
+
 // GetMinecraftPlayerServerSave gets a list of the Minecraft player UUIDs inside a server directory
 func GetMinecraftPlayerServerUUIDSaves(server models.Server) ([]string, error) {
 	fmt.Println("Getting Minecraft player saves for server " + server.Nom + " inside directory " + server.PathServ + server.NomMonde + "/stats ...")

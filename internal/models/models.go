@@ -15,12 +15,32 @@ type BotConfig struct {
 	BotToken  string `json:"botToken"`
 }
 
+// EmbedConfig is a struct that contains the configuration for discord embeds
+type EmbedConfig struct {
+	Title       string `json:"title"`
+	TitleURL    string `json:"titleURL"`
+	Description string `json:"description"`
+	Color       string `json:"color"`
+	Thumbnail   string `json:"thumbnail"`
+	MainImage   string `json:"mainImage"`
+	Footer      string `json:"footer"`
+	Author      string `json:"author"`
+	AuthorIcon  string `json:"authorIcon"`
+	Timestamp   bool   `json:"timestamp"`
+}
+
 // DiscordChannels is a struct that contains the configuration for the Discord channels
 type DiscordChannels struct {
 	BotAdminChannelID      string `json:"botAdminChannelID"`
 	ServerStatusChannelID  string `json:"serverStatusChannelID"`
 	MinecraftChatChannelID string `json:"minecraftChatChannelID"`
 	PalworldChatChannelID  string `json:"palworldChatChannelID"`
+}
+
+// PeriodicEventsConfig is a struct that contains the configuration for the periodic events
+type PeriodicEventsConfig struct {
+	ServersCheckEnabled   bool `json:"serversCheckEnabled"`
+	MinecraftStatsEnabled bool `json:"minecraftStatsEnabled"`
 }
 
 // Type Player is a struct that represents a player in the database
@@ -69,4 +89,12 @@ type MinecraftPlayerGameStatistics struct {
 	ItemsBroken      map[string]int
 	Achievements     map[string]bool
 	LastRecordedTime string
+}
+
+// Trigger is a struct that represents a trigger
+type Trigger struct {
+	Name      string            // Trigger name
+	Condition func(string) bool // Condition of the trigger
+	Action    func(string, int) // Function to execute when the condition is met
+	ServerID  int               // ID of the server
 }

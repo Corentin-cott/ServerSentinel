@@ -6,15 +6,15 @@ import (
 	"strings"
 
 	"github.com/Corentin-cott/ServeurSentinel/config"
-	"github.com/Corentin-cott/ServeurSentinel/internal/console"
 	"github.com/Corentin-cott/ServeurSentinel/internal/db"
 	"github.com/Corentin-cott/ServeurSentinel/internal/discord"
+	"github.com/Corentin-cott/ServeurSentinel/internal/models"
 )
 
 // GetTriggers returns the list of triggers filtered by names
-func GetTriggers(selectedTriggers []string) []console.Trigger {
+func GetTriggers(selectedTriggers []string) []models.Trigger {
 	// All available triggers
-	allTriggers := []console.Trigger{
+	allTriggers := []models.Trigger{
 		{
 			// This is an example trigger, use it as a template to create new triggers
 			Name: "ExampleTrigger",
@@ -31,79 +31,85 @@ func GetTriggers(selectedTriggers []string) []console.Trigger {
 			// This trigger is used to detect when a minecraft server is started
 			Name: "MinecraftServerStarted",
 			Condition: func(line string) bool {
-				// For this trigger, we'll need regex to extract the time and the server name
-				minecraftServerStartedRegex := regexp.MustCompile(`\[(\d{2}:\d{2}:\d{2})\] \[Server thread/INFO\]: Done \((\d+\.\d+)s\)! For help, type "help"`)
-				return minecraftServerStartedRegex.MatchString(line)
+				if isPlayerMessage(line) {
+					return false
+				}
+				match, _ := regexp.MatchString(`.*Done\s*\(.*?\)!.*`, line)
+				return match
 			},
 			Action: func(line string, serverID int) {
-				discord.SendDiscordEmbed(config.AppConfig.Bots["mineotterBot"], config.AppConfig.DiscordChannels.MinecraftChatChannelID, "Connectez-vous !", "Le serveur Minecraft est en ligne", "#9adfba")
+				// Server infos
+				server, err := db.GetServerById(serverID)
+				if err != nil {
+					fmt.Println("ERROR WHILE GETTING SERVER BY ID FOR MINECRAFT SERVER STARTED: " + err.Error())
+					return
+				}
+				discord.SendDiscordEmbed(config.AppConfig.Bots["mineotterBot"], config.AppConfig.DiscordChannels.MinecraftChatChannelID, server.Nom+" viens d'ouvrir !", "Connectez-vous !\nLe serveur "+server.Jeu+" est en ligne !", server.EmbedColor)
 			},
 		},
 		{
-			// This trigger is used to detect when a minecraft server is stopped
-			Name: "MinecraftServerStopped",
+			// This trigger is used to detect when a player sends a message in the Minecraft chat
+			Name: "PlayerChatMinecraftServer",
 			Condition: func(line string) bool {
-				return strings.Contains(line, "Stopping the server")
+				return isPlayerMessage(line)
 			},
 			Action: func(line string, serverID int) {
-				discord.SendDiscordEmbed(config.AppConfig.Bots["mineotterBot"], config.AppConfig.DiscordChannels.MinecraftChatChannelID, "Arrêt du serveur", "Le serveur Minecraft est désormais hors ligne", "#9adfba")
+				err := PlayerMessageAction(line, serverID)
+				if err != nil {
+					fmt.Println("ERROR WHILE PROCESSING PLAYER MESSAGE: " + err.Error())
+				}
 			},
 		},
 		{
 			// This trigger is used to detect when a player joins a Minecraft server
 			Name: "PlayerJoinedMinecraftServer",
 			Condition: func(line string) bool {
+				if isPlayerMessage(line) {
+					return false
+				}
 				return strings.Contains(line, "joined the game")
 			},
 			Action: func(line string, serverID int) {
-				playerJoinedRegex := regexp.MustCompile(`\[(\d{2}:\d{2}:\d{2})\] \[Server thread/INFO\]: (.+) joined the game`)
-				matches := playerJoinedRegex.FindStringSubmatch(line)
-				if len(matches) < 3 {
-					fmt.Println("ERROR WHILE EXTRACTING JOINED PLAYER NAME")
-					return
-				}
-				discord.SendDiscordMessage(config.AppConfig.Bots["mineotterBot"], config.AppConfig.DiscordChannels.MinecraftChatChannelID, matches[2]+" à rejoint le serveur")
-				playerID, err := db.CheckAndInsertPlayerWithPlayerName(matches[2], 1, "now")
+				err := PlayerJoinedAction(line, serverID)
 				if err != nil {
-					fmt.Println("ERROR WHILE CHECKING OR INSERTING PLAYER " + matches[2] + " IN DATABASE: " + err.Error())
+					fmt.Println("ERROR WHILE PROCESSING PLAYER JOINED: " + err.Error())
 				}
-				err = db.SaveConnectionLog(playerID, serverID)
-				if err != nil {
-					fmt.Println("ERROR WHILE SAVING CONNECTION LOG FOR PLAYER " + matches[2] + " IN DATABASE: " + err.Error())
-				}
-				err = db.UpdatePlayerLastConnection(playerID)
-				if err != nil {
-					fmt.Println("ERROR WHILE UPDATING LAST CONNECTION FOR PLAYER " + matches[2] + " IN DATABASE: " + err.Error())
-				}
-				WriteToLogFile("/var/log/serversentinel/playerjoined.log", matches[2])
 			},
 		},
 		{
 			// This trigger is used to detect when a player disconnects from a Minecraft server
 			Name: "PlayerDisconnectedMinecraftServer",
 			Condition: func(line string) bool {
+				if isPlayerMessage(line) {
+					return false
+				}
 				return strings.Contains(line, "lost connection: Disconnected")
 			},
 			Action: func(line string, serverID int) {
-				playerDisconnectedRegex := regexp.MustCompile(`\[(\d{2}:\d{2}:\d{2})\] \[Server thread/INFO\]: (.+) lost connection: Disconnected`)
-				matches := playerDisconnectedRegex.FindStringSubmatch(line)
-				if len(matches) < 3 {
-					fmt.Println("ERROR WHILE EXTRACTING DISCONNECTED PLAYER NAME")
-					return
+				err := PlayerLeftAction(line, serverID)
+				if err != nil {
+					fmt.Println("ERROR WHILE PROCESSING PLAYER DISCONNECTED: " + err.Error())
 				}
-				discord.SendDiscordMessage(config.AppConfig.Bots["mineotterBot"], config.AppConfig.DiscordChannels.MinecraftChatChannelID, matches[2]+" à quitté le serveur")
-				WriteToLogFile("/var/log/serversentinel/playerdisconnected.log", matches[2])
 			},
 		},
 		{
 			// This trigger is used to detect when a palworld server is started
 			Name: "PalworldServerStarted",
 			Condition: func(line string) bool {
+				if isPlayerMessage(line) {
+					return false
+				}
 				palworldServerStartedRegex := regexp.MustCompile(`Running Palworld dedicated server on :\d+`)
-				return palworldServerStartedRegex.MatchString(line)
+				return palworldServerStartedRegex.MatchString(strings.TrimSpace(line))
 			},
 			Action: func(line string, serverID int) {
-				discord.SendDiscordEmbed(config.AppConfig.Bots["mineotterBot"], config.AppConfig.DiscordChannels.PalworldChatChannelID, "Connectez-vous !", "Le serveur Palworld est en ligne", "#9adfba")
+				// Server infos
+				server, err := db.GetServerById(serverID)
+				if err != nil {
+					fmt.Println("ERROR WHILE GETTING SERVER BY ID FOR MINECRAFT SERVER STOPPED: " + err.Error())
+					return
+				}
+				discord.SendDiscordEmbed(config.AppConfig.Bots["multiloutreBot"], config.AppConfig.DiscordChannels.PalworldChatChannelID, server.Nom+" viens d'ouvrir !", "Connectez-vous !\nLe serveur "+server.Jeu+" est en ligne !", server.EmbedColor)
 			},
 		},
 	}
@@ -114,7 +120,7 @@ func GetTriggers(selectedTriggers []string) []console.Trigger {
 	}
 
 	// Filter triggers based on the selected names
-	var filteredTriggers []console.Trigger
+	var filteredTriggers []models.Trigger
 	for _, trigger := range allTriggers {
 		for _, name := range selectedTriggers {
 			if trigger.Name == name {
@@ -125,4 +131,10 @@ func GetTriggers(selectedTriggers []string) []console.Trigger {
 	}
 
 	return filteredTriggers
+}
+
+// Détecte si c'est un message de joueur
+func isPlayerMessage(line string) bool {
+	match, _ := regexp.MatchString(`.*<.*?>.*`, line)
+	return match
 }

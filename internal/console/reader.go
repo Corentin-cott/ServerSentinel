@@ -4,23 +4,20 @@ import (
 	"bufio"
 	"fmt"
 	"io"
+	"log"
 	"os"
+	"path/filepath"
+	"regexp"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/Corentin-cott/ServeurSentinel/internal/db"
+	"github.com/Corentin-cott/ServeurSentinel/internal/models"
 )
 
-// Trigger is a struct that represents a trigger
-type Trigger struct {
-	Name      string            // Trigger name
-	Condition func(string) bool // Condition of the trigger
-	Action    func(string, int) // Function to execute when the condition is met
-	ServerID  int               // ID of the server
-}
-
 // StartFileLogListener starts listening to a log file in real time
-func StartFileLogListener(logFilePath string, triggers []Trigger) error {
+func StartFileLogListener(logFilePath string, triggers []models.Trigger) error {
 	file, err := os.Open(logFilePath)
 	if err != nil {
 		return fmt.Errorf("ERROR WHILE OPENING LOG FILE NAMED %s : %v", logFilePath, err)
@@ -32,7 +29,7 @@ func StartFileLogListener(logFilePath string, triggers []Trigger) error {
 		return fmt.Errorf("ERROR WHILE SEEKING TO THE END OF THE FILE NAMED %s : %v", logFilePath, err)
 	}
 
-	fmt.Printf("✔ Started listening to log file %s\n", logFilePath)
+	fmt.Printf("✔ Started listening to log file %s with %d triggers.\n", logFilePath, len(triggers))
 
 	// Read the file line by line
 	reader := bufio.NewReader(file)
@@ -66,7 +63,7 @@ func StartFileLogListener(logFilePath string, triggers []Trigger) error {
 		}
 
 		// Remove leading and trailing whitespaces
-		line = strings.TrimSpace(line)
+		line = removeANSIcodes(strings.TrimSpace(line))
 		if line != "" {
 			for _, trigger := range triggers {
 				if trigger.Condition(line) {
@@ -75,4 +72,42 @@ func StartFileLogListener(logFilePath string, triggers []Trigger) error {
 			}
 		}
 	}
+}
+
+// Function to process all log files in a directory
+func ProcessLogFiles(logDirPath string, triggersList []models.Trigger) {
+	logFiles, err := filepath.Glob(filepath.Join(logDirPath, "*.log"))
+	if err != nil {
+		log.Fatalf("✘ FATAL ERROR WHEN GETTING LOG FILES: %v", err)
+	}
+
+	if len(logFiles) == 0 {
+		log.Println("✘ No log files found in the directory, did you forget to redirect the logs to the folder?")
+		return
+	}
+
+	// Create a wait group
+	var wg sync.WaitGroup
+
+	// Start a goroutine for each log file
+	for _, logFile := range logFiles {
+		wg.Add(1)
+		go func(file string) {
+			defer wg.Done()
+			err := StartFileLogListener(file, triggersList)
+			if err != nil {
+				log.Printf("✘ Error with file %s: %v\n", file, err)
+			}
+		}(logFile)
+	}
+
+	// Wait for all goroutines to finish
+	wg.Wait()
+}
+
+func removeANSIcodes(line string) string {
+	// Regex to remove ANSI codes
+	re := regexp.MustCompile(`\x1b\[[0-9;]*[A-Za-z]`)
+	line = re.ReplaceAllString(line, "")
+	return line
 }

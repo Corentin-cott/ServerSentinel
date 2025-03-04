@@ -23,6 +23,8 @@ func ConnectToDatabase() error {
 		config.AppConfig.DB.Name,
 	)
 
+	fmt.Println("Here is the conexion string : ", dsn)
+
 	// Try to connect to the database
 	var err error
 	db, err = sql.Open("mysql", dsn)
@@ -32,7 +34,7 @@ func ConnectToDatabase() error {
 
 	// Test the connection
 	if err := db.Ping(); err != nil {
-		return fmt.Errorf("ERROR WHILE PINGING DATABASE: %v", err)
+		return fmt.Errorf("ERROR WHILE PINGING DATABASE WITH CONNECTION STRING: (%v) ! ERROR: %v", dsn, err)
 	}
 
 	fmt.Println("✔ Successfully connected to the database.")
@@ -160,6 +162,22 @@ func GetServerByName(serverName string) (models.Server, error) {
 	return serv, nil
 }
 
+// Getter to get the server name by the server id
+func GetServerNameById(serverID int) (string, error) {
+	query := "SELECT nom FROM serveurs WHERE id = ?"
+	var serverName string
+
+	err := db.QueryRow(query, serverID).Scan(&serverName)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return "", fmt.Errorf("SERVER NOT FOUND: %d", serverID)
+		}
+		return "", fmt.Errorf("FAILED TO GET SERVER NAME: %v", err)
+	}
+
+	return serverName, nil
+}
+
 // Getter to get the server game by the server ID
 func GetServerGameById(serverID int) (string, error) {
 	query := "SELECT jeu FROM serveurs WHERE id = ?"
@@ -174,6 +192,22 @@ func GetServerGameById(serverID int) (string, error) {
 	}
 
 	return jeu, nil
+}
+
+// Getter to get the server color by the server id
+func GetServerColorByName(serverName string) (string, error) {
+	query := "SELECT embed_color FROM serveurs WHERE nom = ?"
+	var serverColor string
+
+	err := db.QueryRow(query, serverName).Scan(&serverColor)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return "", fmt.Errorf("SERVER NOT FOUND: %s", serverName)
+		}
+		return "", fmt.Errorf("FAILED TO GET SERVER COLOR: %v", err)
+	}
+
+	return serverColor, nil
 }
 
 /* -----------------------------------------------------
