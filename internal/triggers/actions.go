@@ -31,98 +31,227 @@ func WriteToLogFile(logPath string, line string) error {
 	return nil
 }
 
-// Action when a player message is detected
-func PlayerMessageAction(line string, serverID int) error {
-	// Player name
+// Define the functions for each game, here is Minecraft
+func handleMinecraftPlayerMessage(line string) (string, string, string, string, error) {
 	playerChatRegex := regexp.MustCompile(`\[(\d{2}:\d{2}:\d{2})\] \[Server thread/INFO](?: \[.+?/MinecraftServer])?: <(.+?)> (.+)`)
 	matches := playerChatRegex.FindStringSubmatch(line)
 	if len(matches) < 4 {
-		return fmt.Errorf("ERROR WHILE EXTRACTING CHAT PLAYER NAME... MAYBE IT'S NOT A PLAYER MESSAGE ? LINE: %v", line)
+		return "", "", "", "", fmt.Errorf("ERROR WHILE EXTRACTING CHAT PLAYER NAME FOR MINECRAFT")
 	}
+	playerName := matches[2]
+	message := matches[3]
+
+	// Get player UUID and head URL for Minecraft
+	playerUUID, err := services.GetMinecraftPlayerUUID(playerName)
+	if err != nil {
+		return "", "", "", "", fmt.Errorf("ERROR WHILE GETTING PLAYER UUID: %v", err)
+	}
+
+	playerHeadURL, err := services.GetMinecraftPlayerHeadURL(playerUUID)
+	if err != nil {
+		return "", "", "", "", fmt.Errorf("ERROR WHILE GETTING PLAYER HEAD URL: %v", err)
+	}
+
+	titleURL := "https://fr.namemc.com/profile/" + playerUUID
+	return playerName, message, playerHeadURL, titleURL, nil
+}
+
+// Define the functions for each game, here is Palworld
+func handlePalworldPlayerMessage(line string) (string, string, string, string, error) {
+	playerChatRegex := regexp.MustCompile(`\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\] \[CHAT\] <(.+?)> (.+)`)
+	matches := playerChatRegex.FindStringSubmatch(line)
+	if len(matches) < 3 {
+		return "", "", "", "", fmt.Errorf("ERROR WHILE EXTRACTING CHAT PLAYER NAME FOR PALWORLD")
+	}
+	playerName := matches[1]
+	message := matches[2]
+	return playerName, message, "", "", nil
+}
+
+// Create a map for game-specific actions
+var gameActionsMap = map[string]func(string) (string, string, string, string, error){
+	"Minecraft": handleMinecraftPlayerMessage,
+	"Palworld":  handlePalworldPlayerMessage,
+}
+
+// Action when a player message is detected
+func PlayerMessageAction(line string, serverID int) error {
 	// Server infos
 	server, err := db.GetServerById(serverID)
 	if err != nil {
 		return fmt.Errorf("ERROR WHILE GETTING SERVER BY ID FOR PLAYER MESSAGE: %v", err)
 	}
-	// Action
-	playerName := matches[2]
-	message := matches[3]
 
-	playerUUID, err := services.GetMinecraftPlayerUUID(playerName) // Get player UUID
-	if err != nil {
-		return fmt.Errorf("ERROR WHILE GETTING PLAYER UUID: %v", err)
+	// Get the appropriate game action function from the map
+	actionFunc, exists := gameActionsMap[server.Jeu]
+	if !exists {
+		return fmt.Errorf("ERROR: SERVER GAME %v IS NOT SUPPORTED", server.Jeu)
 	}
 
-	playerHeadURL, err := services.GetMinecraftPlayerHeadURL(playerUUID) // Get player head URL
+	// Call the specific action function for the game
+	playerName, message, playerHeadURL, titleURL, err := actionFunc(line)
 	if err != nil {
-		return fmt.Errorf("ERROR WHILE GETTING PLAYER HEAD URL: %v", err)
+		return err
 	}
 
+	// Bot config
+	botName := "mineotterBot" // Can be extended similarly using the mappage if needed
+
+	// Send the Discord embed message
 	embed := models.EmbedConfig{
 		Title:       playerName,
-		TitleURL:    "https://fr.namemc.com/profile/" + playerUUID,
+		TitleURL:    titleURL,
 		Description: message,
 		Color:       server.EmbedColor,
 		Thumbnail:   playerHeadURL,
-		MainImage:   "",
 		Footer:      "Message venant de " + server.Nom,
-		Author:      "",
-		AuthorIcon:  "",
-		Timestamp:   false,
 	}
-	err = discord.SendDiscordEmbedWithModel(config.AppConfig.Bots["mineotterBot"], config.AppConfig.DiscordChannels.MinecraftChatChannelID, embed)
+
+	err = discord.SendDiscordEmbedWithModel(config.AppConfig.Bots[botName], config.AppConfig.DiscordChannels.MinecraftChatChannelID, embed)
 	if err != nil {
 		return fmt.Errorf("ERROR WHILE SENDING DISCORD EMBED: %v", err)
 	}
 	return nil
 }
 
-// Action when a player joined the server
-func PlayerJoinedAction(line string, serverID int) error {
-	// Player name
+// Define the functions for each game, here is Minecraft
+func handleMinecraftPlayerJoined(line string) (string, error) {
 	playerJoinedRegex := regexp.MustCompile(`\[(\d{2}:\d{2}:\d{2})\] \[Server thread/INFO](?: \[.+?/MinecraftServer])?: (.+) joined the game`)
 	matches := playerJoinedRegex.FindStringSubmatch(line)
 	if len(matches) < 3 {
-		return fmt.Errorf("ERROR WHILE EXTRACTING JOINED PLAYER NAME")
+		return "", fmt.Errorf("ERROR WHILE EXTRACTING JOINED PLAYER NAME FOR MINECRAFT SERVER")
 	}
+	return matches[2], nil
+}
+
+// Define the functions for each game, here is Palworld
+func handlePalworldPlayerJoined(line string) (string, error) {
+	playerJoinedRegex := regexp.MustCompile(`\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\] \[LOG\] (.+?) \d{1,3}(?:\.\d{1,3}){3} connected the server`)
+	matches := playerJoinedRegex.FindStringSubmatch(line)
+	if len(matches) < 2 {
+		return "", fmt.Errorf("ERROR WHILE EXTRACTING JOINED PLAYER NAME FOR PALWORLD SERVER")
+	}
+	return matches[1], nil
+}
+
+// Create a map for game-specific actions for joined and left actions
+var gameJoinActionsMap = map[string]func(string) (string, error){
+	"Minecraft": handleMinecraftPlayerJoined,
+	"Palworld":  handlePalworldPlayerJoined,
+}
+
+// Action when a player joined the server
+func PlayerJoinedAction(line string, serverID int) error {
 	// Server infos
 	server, err := db.GetServerById(serverID)
 	if err != nil {
-		return fmt.Errorf("ERROR WHILE GETTING SERVER BY ID FOR MINECRAFT SERVER STOPPED: %v", err)
+		return fmt.Errorf("ERROR WHILE GETTING SERVER BY ID FOR PLAYER JOINED: %v", err)
 	}
-	// Action
-	discord.SendDiscordEmbed(config.AppConfig.Bots["mineotterBot"], config.AppConfig.DiscordChannels.MinecraftChatChannelID, matches[2]+" à rejoint "+server.Nom, "", server.EmbedColor)
-	playerID, err := db.CheckAndInsertPlayerWithPlayerName(matches[2], 1, "now")
+
+	// Get the appropriate game action function from the map for "joined" action
+	actionFunc, exists := gameJoinActionsMap[server.Jeu]
+	if !exists {
+		return fmt.Errorf("ERROR: SERVER GAME %v IS NOT SUPPORTED", server.Jeu)
+	}
+
+	// Call the specific action function for the game
+	playerName, err := actionFunc(line)
+	if err != nil {
+		return err
+	}
+
+	// Bot config
+	var botName string
+	if server.Jeu == "Minecraft" {
+		botName = "mineotterBot"
+	} else {
+		botName = "multiloutreBot"
+	}
+
+	// Send the Discord embed message
+	discord.SendDiscordEmbed(config.AppConfig.Bots[botName], config.AppConfig.DiscordChannels.MinecraftChatChannelID, playerName+" a rejoint "+server.Nom, "", server.EmbedColor)
+
+	// Handle player connection log in DB
+	playerID, err := db.CheckAndInsertPlayerWithPlayerName(playerName, 1, "now")
 	if err != nil {
 		return fmt.Errorf("ERROR WHILE CHECKING OR INSERTING PLAYER: %v", err)
 	}
+
 	err = db.SaveConnectionLog(playerID, serverID)
 	if err != nil {
-		return fmt.Errorf("ERROR WHILE SAVING CONNECTION LOG: FOR PLAYER %v IN DATABASE: %v", matches[2], err)
+		return fmt.Errorf("ERROR WHILE SAVING CONNECTION LOG: FOR PLAYER %v IN DATABASE: %v", playerName, err)
 	}
+
 	err = db.UpdatePlayerLastConnection(playerID)
 	if err != nil {
-		return fmt.Errorf("ERROR WHILE UPDATING LAST CONNECTION FOR PLAYER %v IN DATABASE: %v", matches[2], err)
+		return fmt.Errorf("ERROR WHILE UPDATING LAST CONNECTION FOR PLAYER %v IN DATABASE: %v", playerName, err)
 	}
-	WriteToLogFile("/var/log/serversentinel/playerjoined.log", matches[2])
+
+	// Log to file
+	WriteToLogFile("/var/log/serversentinel/playerjoined.log", playerName)
+
 	return nil
+}
+
+// Define the functions for each game, here is Minecraft
+func handleMinecraftPlayerLeft(line string) (string, error) {
+	playerDisconnectedRegex := regexp.MustCompile(`\[\d{2}:\d{2}:\d{2}\] \[Server thread/INFO\].*?: ([^\s]+) (?:left the game|disconnected|lost connection)`)
+	matches := playerDisconnectedRegex.FindStringSubmatch(line)
+	if len(matches) < 2 || len(matches[1]) < 3 { // Minecraft player names are at least 3 characters long, so this filter prevents false positives
+		return "", fmt.Errorf("ERROR WHILE EXTRACTING DISCONNECTED PLAYER NAME FOR MINECRAFT SERVER")
+	}
+	return matches[1], nil
+}
+
+// Define the functions for each game, here is Palworld
+func handlePalworldPlayerLeft(line string) (string, error) {
+	playerDisconnectedRegex := regexp.MustCompile(`\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\] \[LOG\] (.+?) left the server`)
+	matches := playerDisconnectedRegex.FindStringSubmatch(line)
+	if len(matches) < 2 {
+		return "", fmt.Errorf("ERROR WHILE EXTRACTING LEFT PLAYER NAME FOR PALWORLD SERVER")
+	}
+	return matches[1], nil
+}
+
+// Create a map for game-specific actions for joined and left actions
+var gameLeaveActionsMap = map[string]func(string) (string, error){
+	"Minecraft": handleMinecraftPlayerLeft,
+	"Palworld":  handlePalworldPlayerLeft,
 }
 
 // Action when a player left the server
 func PlayerLeftAction(line string, serverID int) error {
-	// Player name
-	playerDisconnectedRegex := regexp.MustCompile(`\[\d{2}:\d{2}:\d{2}\] \[Server thread/INFO\].*?: ([^\s]+) (?:left the game|disconnected|lost connection)`)
-	matches := playerDisconnectedRegex.FindStringSubmatch(line)
-	if len(matches) < 2 || len(matches[1]) < 3 { // Minecraft player names are at least 3 characters long, so this filter prevents false positives
-		return fmt.Errorf("ERROR WHILE EXTRACTING DISCONNECTED PLAYER NAME")
-	}
 	// Server infos
 	server, err := db.GetServerById(serverID)
 	if err != nil {
-		return fmt.Errorf("ERROR WHILE GETTING SERVER BY ID FOR MINECRAFT SERVER STOPPED: %v", err)
+		return fmt.Errorf("ERROR WHILE GETTING SERVER BY ID FOR PLAYER LEFT: %v", err)
 	}
-	// Action
-	discord.SendDiscordEmbed(config.AppConfig.Bots["mineotterBot"], config.AppConfig.DiscordChannels.MinecraftChatChannelID, matches[1]+" à quitté "+server.Nom, "", server.EmbedColor)
-	WriteToLogFile("/var/log/serversentinel/playerdisconnected.log", matches[1])
+
+	// Get the appropriate game action function from the map for "left" action
+	actionFunc, exists := gameLeaveActionsMap[server.Jeu]
+	if !exists {
+		return fmt.Errorf("ERROR: SERVER GAME %v IS NOT SUPPORTED", server.Jeu)
+	}
+
+	// Call the specific action function for the game
+	playerName, err := actionFunc(line)
+	if err != nil {
+		return err
+	}
+
+	// Bot config
+	var botName string
+	if server.Jeu == "Minecraft" {
+		botName = "mineotterBot"
+	} else {
+		botName = "multiloutreBot"
+	}
+
+	// Send the Discord embed message
+	discord.SendDiscordEmbed(config.AppConfig.Bots[botName], config.AppConfig.DiscordChannels.MinecraftChatChannelID, playerName+" a quitté "+server.Nom, "", server.EmbedColor)
+
+	// Log to file
+	WriteToLogFile("/var/log/serversentinel/playerdisconnected.log", playerName)
+
 	return nil
 }
