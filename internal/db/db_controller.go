@@ -130,6 +130,28 @@ func GetSecondaryServerId() int {
 	return serverID
 }
 
+// Setter to set the primary server
+func SetPrimaryServerId(serverID int) error {
+	query := "UPDATE serveurs_parameters SET id_serv_primaire = ?"
+	_, err := db.Exec(query, serverID)
+	if err != nil {
+		return fmt.Errorf("FAILED TO SET PRIMARY SERVER: %v", err)
+	}
+
+	return nil
+}
+
+// Setter to set the secondary server
+func SetSecondaryServerId(serverID int) error {
+	query := "UPDATE serveurs_parameters SET id_serv_secondaire = ?"
+	_, err := db.Exec(query, serverID)
+	if err != nil {
+		return fmt.Errorf("FAILED TO SET SECONDARY SERVER: %v", err)
+	}
+
+	return nil
+}
+
 // Getter to get all the server informations
 func GetServerById(serverID int) (models.Server, error) {
 	query := "SELECT * FROM serveurs WHERE id = ?"

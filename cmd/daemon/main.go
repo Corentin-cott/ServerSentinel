@@ -46,6 +46,37 @@ func main() {
 		},
 	}
 
+	// Command: serversentinel check-server
+	var checkServerCmd = &cobra.Command{
+		Use:   "check-server",
+		Short: "Check and start servers that are supposed to be running",
+		Args:  cobra.NoArgs,
+		Run: func(cmd *cobra.Command, args []string) {
+			// Because it's a CLI command, we need to load the configuration file
+			err := config.LoadConfig("/opt/serversentinel/config.json")
+			if err != nil {
+				log.Fatalf("FATAL ERROR LOADING CONFIG JSON FILE: %v", err)
+				return
+			}
+
+			// Initialize the connection to the database
+			err = db.ConnectToDatabase()
+			if err != nil {
+				log.Fatalf("FATAL ERROR TESTING DATABASE CONNECTION: %v", err)
+				return
+			}
+
+			// Check if the right tmux servers are running
+			fmt.Printf("Checking and starting servers that are supposed to be running\n")
+			message, err := tmux.CheckRunningServers()
+			if err != nil {
+				log.Fatalf("FATAL ERROR CHECKING RUNNING SERVERS: %v", err)
+				return
+			}
+			fmt.Println(message)
+		},
+	}
+
 	// Command: serversentinel daemon
 	var daemonCmd = &cobra.Command{
 		Use:   "daemon",
@@ -57,6 +88,7 @@ func main() {
 	rootCmd.AddCommand(daemonCmd)
 	rootCmd.AddCommand(startServerCmd)
 	rootCmd.AddCommand(stopServerCmd)
+	rootCmd.AddCommand(checkServerCmd)
 
 	// Execute CLI
 	if err := rootCmd.Execute(); err != nil {
@@ -163,16 +195,27 @@ func commandStartStopServerWithID(serverID string, action string) {
 		return
 	}
 
-	// If the action is "start", we start the server
-	sessionID, err := tmux.GetSessionIDForServer(serverIDInt)
+	// If the action is "start", we first check if the server is primary or not
+	if server.ID == 1 {
+		err = db.SetPrimaryServerId(server.ID)
+		if err != nil {
+			log.Fatalf("FATAL ERROR SETTING PRIMARY SERVER ID: %v", err)
+			return
+		}
+	} else {
+		err = db.SetSecondaryServerId(server.ID)
+		if err != nil {
+			log.Fatalf("FATAL ERROR SETTING SECONDARY SERVER ID: %v", err)
+			return
+		}
+	}
+
+	// Start the server
+	message, err := tmux.CheckRunningServers()
 	if err != nil {
-		log.Fatalf("FATAL ERROR GETTING SESSION ID FOR SERVER: %v", err)
+		log.Fatalf("FATAL ERROR CHECKING RUNNING SERVERS: %v", err)
 		return
 	}
 
-	err = tmux.StartServerTmux(sessionID, server)
-	if err != nil {
-		log.Fatalf("FATAL ERROR STARTING SERVER: %v", err)
-		return
-	}
+	fmt.Println(message)
 }
