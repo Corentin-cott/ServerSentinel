@@ -243,6 +243,20 @@ func GetTmuxSessions() ([]string, error) {
 	return sessions, nil
 }
 
+// Return supposed sessionID for a server
+func GetSessionIDForServer(serverID int) (int, error) {
+	primaryServerID := db.GetPrimaryServerId()
+	secondaryServerID := db.GetSecondaryServerId()
+
+	if serverID == primaryServerID {
+		return 1, nil
+	} else if serverID == secondaryServerID {
+		return 2, nil
+	} else {
+		return -1, fmt.Errorf("SERVER %d IS NOT PRIMARY NOR SECONDARY", serverID)
+	}
+}
+
 // Returns the appropriate Java version for a given Minecraft version
 func GetJavaVersionForMinecraftVersion(mcVersion string, mcModpack string) (string, error) {
 	// Extract the main version of Minecraft
