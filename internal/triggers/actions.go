@@ -213,21 +213,6 @@ func PlayerGetAdvancementAction(line string, serverID int) error {
 	// Bot config
 	botName := "mineotterBot"
 
-	/*
-	   type EmbedConfig struct {
-	   	Title       string `json:"title"`
-	   	TitleURL    string `json:"titleURL"`
-	   	Description string `json:"description"`
-	   	Color       string `json:"color"`
-	   	Thumbnail   string `json:"thumbnail"`
-	   	MainImage   string `json:"mainImage"`
-	   	Footer      string `json:"footer"`
-	   	Author      string `json:"author"`
-	   	AuthorIcon  string `json:"authorIcon"`
-	   	Timestamp   bool   `json:"timestamp"`
-	   }
-	*/
-
 	// Create embed model
 	embed := models.EmbedConfig{
 		Title:       advancement,
@@ -243,6 +228,37 @@ func PlayerGetAdvancementAction(line string, serverID int) error {
 
 	// Send the Discord embed message
 	err = discord.SendDiscordEmbedWithModel(config.AppConfig.Bots[botName], config.AppConfig.DiscordChannels.MinecraftChatChannelID, embed)
+	if err != nil {
+		return fmt.Errorf("ERROR WHILE SENDING DISCORD EMBED: %v", err)
+	}
+
+	return nil
+}
+
+// Action when a Minecraft player dies
+func PlayerDeathAction(deathMessage string, playername string, serverID int) error {
+	// Server infos
+	server, err := db.GetServerById(serverID)
+	if err != nil {
+		return fmt.Errorf("ERROR WHILE GETTING SERVER BY ID FOR PLAYER DEATH: %v", err)
+	}
+
+	// Bot config
+	botName := "mineotterBot"
+
+	// Create embed model
+	embedtwo := models.EmbedConfig{
+		Title:       playername + " est mort !",
+		TitleURL:    "",
+		Description: deathMessage,
+		Color:       server.EmbedColor,
+		Thumbnail:   "",
+		Footer:      "Message venant de " + server.Nom,
+		Author:      "",
+		AuthorIcon:  "",
+		Timestamp:   true,
+	}
+	err = discord.SendDiscordEmbedWithModel(config.AppConfig.Bots[botName], config.AppConfig.DiscordChannels.MinecraftChatChannelID, embedtwo)
 	if err != nil {
 		return fmt.Errorf("ERROR WHILE SENDING DISCORD EMBED: %v", err)
 	}

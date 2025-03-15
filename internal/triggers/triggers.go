@@ -109,6 +109,26 @@ func GetTriggers(selectedTriggers []string) []models.Trigger {
 			},
 		},
 		{
+			// This trigger is used to detect when a Minecraft Player dies
+			Name: "PlayerDeath",
+			Condition: func(line string) bool {
+				if isPlayerMessage(line) {
+					return false
+				}
+				isDeath, _, _ := isPlayerDeathMessage(line)
+				return isDeath
+			},
+			Action: func(line string, serverID int) {
+				_, deathMessage, playername := isPlayerDeathMessage(line)
+				fmt.Println("Player death detected for: " + playername)
+				fmt.Println("Death message: " + deathMessage)
+				err := PlayerDeathAction(deathMessage, playername, serverID)
+				if err != nil {
+					fmt.Println("ERROR WHILE PROCESSING PLAYER DEATH: " + err.Error())
+				}
+			},
+		},
+		{
 			// This trigger is used to detect when a palworld server is started
 			Name: "PalworldServerStarted",
 			Condition: func(line string) bool {
@@ -182,8 +202,22 @@ func GetTriggers(selectedTriggers []string) []models.Trigger {
 	return filteredTriggers
 }
 
-// Détecte si c'est un message de joueur
+// Detect if a line is a player message
 func isPlayerMessage(line string) bool {
 	match, _ := regexp.MatchString(`.*<.*?>.*`, line)
 	return match
+}
+
+// Regex améliorée pour matcher le format du log
+var deathMessageRegex = regexp.MustCompile(`\[.*?\] \[.*?\]: (.*?) (was slain by|was killed by|drowned|starved to death|blew up|withered away|fell from a high place|fell out of the world)(.*)`)
+
+// Détecte si une ligne est un message de mort et extrait les infos
+func isPlayerDeathMessage(line string) (bool, string, string) {
+	matches := deathMessageRegex.FindStringSubmatch(line)
+	if len(matches) > 3 {
+		playerName := strings.TrimSpace(matches[1])                // Nom du joueur
+		deathMessage := playerName + " " + matches[2] + matches[3] // Message de mort complet
+		return true, deathMessage, playerName
+	}
+	return false, "", ""
 }
