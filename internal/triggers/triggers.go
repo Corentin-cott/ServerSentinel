@@ -93,6 +93,22 @@ func GetTriggers(selectedTriggers []string) []models.Trigger {
 			},
 		},
 		{
+			// This trigger is used to detect when a Minecraft Player get an advancement
+			Name: "PlayerGetAdvancement",
+			Condition: func(line string) bool {
+				if isPlayerMessage(line) {
+					return false
+				}
+				return strings.Contains(line, "has made the advancement")
+			},
+			Action: func(line string, serverID int) {
+				err := PlayerGetAdvancementAction(line, serverID)
+				if err != nil {
+					fmt.Println("ERROR WHILE PROCESSING PLAYER GET ADVANCEMENT: " + err.Error())
+				}
+			},
+		},
+		{
 			// This trigger is used to detect when a palworld server is started
 			Name: "PalworldServerStarted",
 			Condition: func(line string) bool {
