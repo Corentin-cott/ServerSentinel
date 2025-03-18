@@ -1,7 +1,5 @@
 # Server Sentinel
 
-tmux new-session -s ${id}_${nom_serv} 'java -Xmx1024M -Xms1024M -jar server.jar nogui 2>&1 || tee /opt/serversentinel/serverslog/${id}.log'
-
 ## Table of Contents
 
 - [Description](#Goals)
@@ -20,6 +18,8 @@ For performance reasons, the Daemon doesn't read the terminal directly, but the 
 Main functionalities :
 - Get and store server player data in database
 - Read logs of [tmux](https://doc.ubuntu-fr.org/tmux) game server sessions to listen to server consoles<br>**->** Do stuff when certain things appear in server console *(Sent message with a bot, extract and store data, ect...)*
+- A few CLI commands : use serveursentinel to know more about these commands
+- 
 
 ## How to install
 
