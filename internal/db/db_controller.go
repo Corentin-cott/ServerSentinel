@@ -130,6 +130,20 @@ func GetSecondaryServerId() int {
 	return serverID
 }
 
+// Getter to get the event/partenariat server
+func GetPartenariatServerId() int {
+	query := "SELECT id_serv_partenaire FROM serveurs_parameters"
+	var serverID int
+
+	err := db.QueryRow(query).Scan(&serverID)
+	if err != nil {
+		fmt.Println("FAILED TO GET PARTENARIAT SERVER:", err)
+		return -1
+	}
+
+	return serverID
+}
+
 // Setter to set the primary server
 func SetPrimaryServerId(serverID int) error {
 	query := "UPDATE serveurs_parameters SET id_serv_primaire = ?"
@@ -147,6 +161,17 @@ func SetSecondaryServerId(serverID int) error {
 	_, err := db.Exec(query, serverID)
 	if err != nil {
 		return fmt.Errorf("FAILED TO SET SECONDARY SERVER: %v", err)
+	}
+
+	return nil
+}
+
+// Setter to set the event/partenariat server
+func SetPartenariatServerId(serverID int) error {
+	query := "UPDATE serveurs_parameters SET id_serv_partenaire = ?"
+	_, err := db.Exec(query, serverID)
+	if err != nil {
+		return fmt.Errorf("FAILED TO SET PARTENARIAT SERVER: %v", err)
 	}
 
 	return nil

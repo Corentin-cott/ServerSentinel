@@ -67,7 +67,7 @@ func main() {
 			}
 
 			// Check if the right tmux servers are running
-			fmt.Printf("Checking and starting servers that are supposed to be running\n")
+			fmt.Printf("Checking and starting servers that are supposed to be running now!\n")
 			message, err := tmux.CheckRunningServers()
 			if err != nil {
 				log.Fatalf("FATAL ERROR CHECKING RUNNING SERVERS: %v", err)
@@ -195,19 +195,20 @@ func commandStartStopServerWithID(serverID string, action string) {
 		return
 	}
 
-	// If the action is "start", we first check if the server is primary or not
-	if server.ID == 1 {
-		err = db.SetPrimaryServerId(server.ID)
-		if err != nil {
-			log.Fatalf("FATAL ERROR SETTING PRIMARY SERVER ID: %v", err)
-			return
-		}
-	} else {
+	// If the action is "start", we first check if the server is supposed to be running
+	primaryServerID := db.GetPrimaryServerId()
+	secondaryServerID := db.GetSecondaryServerId()
+	partenariatServerID := db.GetPartenariatServerId()
+
+	if server.ID != primaryServerID && server.ID != secondaryServerID && server.ID != partenariatServerID {
+		// The server is not supposed to be running, then we start it as a secondary server
 		err = db.SetSecondaryServerId(server.ID)
 		if err != nil {
 			log.Fatalf("FATAL ERROR SETTING SECONDARY SERVER ID: %v", err)
 			return
 		}
+	} else {
+		// The server is supposed to be running, then it will be started by "CheckRunningServers" function
 	}
 
 	// Start the server

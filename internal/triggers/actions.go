@@ -193,6 +193,79 @@ func PlayerJoinedAction(line string, serverID int) error {
 	return nil
 }
 
+// Action when a Minecraft player get an advancement
+func PlayerGetAdvancementAction(line string, serverID int) error {
+	// Server infos
+	server, err := db.GetServerById(serverID)
+	if err != nil {
+		return fmt.Errorf("ERROR WHILE GETTING SERVER BY ID FOR PLAYER GET ADVANCEMENT: %v", err)
+	}
+
+	// Minecraft player advancements regex
+	playerAdvancementRegex := regexp.MustCompile(`\[(\d{2}:\d{2}:\d{2})\] \[Server thread/INFO].*?: ([^\s]+) has made the advancement \[(.+?)]`)
+	matches := playerAdvancementRegex.FindStringSubmatch(line)
+	if len(matches) < 4 {
+		return fmt.Errorf("ERROR WHILE EXTRACTING PLAYER ADVANCEMENT FOR MINECRAFT SERVER")
+	}
+	playerName := matches[2]
+	advancement := matches[3]
+
+	// Bot config
+	botName := "mineotterBot"
+
+	// Create embed model
+	embed := models.EmbedConfig{
+		Title:       advancement,
+		TitleURL:    "https://fr.namemc.com/profile/" + playerName,
+		Description: playerName + " a obtenu l'avancement \"" + advancement + "\" sur " + server.Nom + " !",
+		Color:       server.EmbedColor,
+		Thumbnail:   "https://media.forgecdn.net/avatars/thumbnails/851/712/256/256/638254029686192051.png",
+		Footer:      "Message venant de " + server.Nom,
+		Author:      "",
+		AuthorIcon:  "",
+		Timestamp:   true,
+	}
+
+	// Send the Discord embed message
+	err = discord.SendDiscordEmbedWithModel(config.AppConfig.Bots[botName], config.AppConfig.DiscordChannels.MinecraftChatChannelID, embed)
+	if err != nil {
+		return fmt.Errorf("ERROR WHILE SENDING DISCORD EMBED: %v", err)
+	}
+
+	return nil
+}
+
+// Action when a Minecraft player dies
+func PlayerDeathAction(deathMessage string, playername string, serverID int) error {
+	// Server infos
+	server, err := db.GetServerById(serverID)
+	if err != nil {
+		return fmt.Errorf("ERROR WHILE GETTING SERVER BY ID FOR PLAYER DEATH: %v", err)
+	}
+
+	// Bot config
+	botName := "mineotterBot"
+
+	// Create embed model
+	embedtwo := models.EmbedConfig{
+		Title:       playername + " est mort !",
+		TitleURL:    "",
+		Description: deathMessage,
+		Color:       server.EmbedColor,
+		Thumbnail:   "",
+		Footer:      "Message venant de " + server.Nom,
+		Author:      "",
+		AuthorIcon:  "",
+		Timestamp:   true,
+	}
+	err = discord.SendDiscordEmbedWithModel(config.AppConfig.Bots[botName], config.AppConfig.DiscordChannels.MinecraftChatChannelID, embedtwo)
+	if err != nil {
+		return fmt.Errorf("ERROR WHILE SENDING DISCORD EMBED: %v", err)
+	}
+
+	return nil
+}
+
 // Define the functions for each game, here is Minecraft
 func handleMinecraftPlayerLeft(line string) (string, error) {
 	playerDisconnectedRegex := regexp.MustCompile(`\[\d{2}:\d{2}:\d{2}\] \[Server thread/INFO\].*?: ([^\s]+) (?:left the game|disconnected|lost connection)`)

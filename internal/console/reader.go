@@ -91,6 +91,10 @@ func ProcessLogFiles(logDirPath string, triggersList []models.Trigger) {
 
 	// Start a goroutine for each log file
 	for _, logFile := range logFiles {
+		// If logFile is "3.log", ignore it
+		if strings.HasSuffix(logFile, "3.log") { // BAD PRATICE: hardcoded value, but need something quick
+			continue
+		}
 		wg.Add(1)
 		go func(file string) {
 			defer wg.Done()

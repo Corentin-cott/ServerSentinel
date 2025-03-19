@@ -18,7 +18,7 @@ func CheckRunningServers() (string, error) {
 	var message strings.Builder
 	errorMessages := ""
 
-	// Get the primary and secondary servers from the database
+	// Get the primary, secondary, and partenariat servers from the database
 	primaryServer, err := db.GetServerById(db.GetPrimaryServerId())
 	if err != nil {
 		return "", fmt.Errorf("ERROR WHILE GETTING PRIMARY SERVER: %v", err)
@@ -29,75 +29,80 @@ func CheckRunningServers() (string, error) {
 		return "", fmt.Errorf("ERROR WHILE GETTING SECONDARY SERVER: %v", err)
 	}
 
+	partenariatServer, err := db.GetServerById(db.GetPartenariatServerId())
+	if err != nil {
+		return "", fmt.Errorf("ERROR WHILE GETTING PARTENARIAT SERVER: %v", err)
+	}
+
+	fmt.Println("Supposed to be running servers:")
+	fmt.Println("- Primary:", primaryServer.Nom)
+	fmt.Println("- Secondary:", secondaryServer.Nom)
+	fmt.Println("- Partenariat:", partenariatServer.Nom)
+
 	// Get the active tmux sessions
 	activeSessions, err := GetTmuxSessions()
 	if err != nil {
 		return "", fmt.Errorf("ERROR WHILE GETTING ACTIVE TMUX SESSIONS: %v", err)
 	}
 
-	// Check if the active servers match the servers in the database
+	// Validate active sessions
 	for _, session := range activeSessions {
 		isSupposedToBeRunning, err := IsServerSupposedToBeRunning(session)
 		if err != nil {
-			errorMessages += fmt.Sprintf("ERROR WHILE CHECKING IF %s SHOULD BE RUNNING: %v", session, err)
-			fmt.Fprintf(&message, "%s", errorMessages)
+			errorMessages += fmt.Sprintf("ERROR WHILE CHECKING IF %s SHOULD BE RUNNING: %v\n", session, err)
 			continue
 		}
 
-		// If the server is not supposed to be running, stop it
+		// If a server is running but shouldn't be, stop it
 		if !isSupposedToBeRunning {
-			err := StopServerTmux(session)
-			if err != nil {
-				errorMessages += fmt.Sprintf("ERROR WHILE STOPPING %s: %v", session, err)
-				fmt.Fprintf(&message, "%s", errorMessages)
+			if err := StopServerTmux(session); err != nil {
+				errorMessages += fmt.Sprintf("ERROR WHILE STOPPING %s: %v\n", session, err)
 			} else {
-				fmt.Fprintf(&message, "✘ Stopped server: %s (not supposed to be running) ", session)
+				fmt.Fprintf(&message, "✘ Stopped server: %s (not supposed to be running)\n", session)
 			}
 		}
 	}
 
-	// Check if the espected servers are running
-	for _, server := range []models.Server{primaryServer, secondaryServer} {
+	// Ensure expected servers are running
+	for _, server := range []models.Server{primaryServer, secondaryServer, partenariatServer} {
 		isRunning, err := IsServerRunning(server.Nom)
 		if err != nil {
-			errorMessages += fmt.Sprintf("ERROR WHILE CHECKING IF %s IS RUNNING: %v", server.Nom, err)
-			fmt.Fprintf(&message, "%s", errorMessages)
+			errorMessages += fmt.Sprintf("ERROR WHILE CHECKING IF %s IS RUNNING: %v\n", server.Nom, err)
 			continue
 		}
 
-		// If the server is not running, start it
+		// If not running, start it
 		if !isRunning {
-			sessionID := -1
-			if server.ID == primaryServer.ID {
+			var sessionID int
+			switch server.ID {
+			case primaryServer.ID:
 				sessionID = 1
-			} else if server.ID == secondaryServer.ID {
+			case secondaryServer.ID:
 				sessionID = 2
-			} else {
-				errorMessages += fmt.Sprintf("SERVER %s IS NOT PRIMARY NOR SECONDARY", server.Nom)
-				fmt.Fprintf(&message, "%s", errorMessages)
+			case partenariatServer.ID:
+				sessionID = 3
+			default:
+				errorMessages += fmt.Sprintf("SERVER %s IS NOT PRIMARY, SECONDARY, OR PARTENARIAT\n", server.Nom)
 				continue
 			}
 
-			err := StartServerTmux(sessionID, server)
-			if err != nil {
-				errorMessages += fmt.Sprintf("ERROR WHILE STARTING %s: %v", server.Nom, err)
-				fmt.Fprintf(&message, "%s", errorMessages)
+			if err := StartServerTmux(sessionID, server); err != nil {
+				errorMessages += fmt.Sprintf("ERROR WHILE STARTING %s: %v\n", server.Nom, err)
 			} else {
-				fmt.Fprintf(&message, "✔ Started server: %s (supposed to be running) ", server.Nom)
+				fmt.Fprintf(&message, "✔ Started server: %s (supposed to be running)\n", server.Nom)
 			}
 		}
 	}
 
-	// Empty message means all servers are running
+	// If no messages were added, everything is fine
 	if message.Len() == 0 {
 		message.WriteString("✔ Nothing to do, all servers are running as expected.")
 	}
 
 	if errorMessages != "" {
 		return message.String(), fmt.Errorf("%s", errorMessages)
-	} else {
-		return message.String(), nil
 	}
+	return message.String(), nil
 }
 
 // Check if a server is currently running in a tmux session
@@ -125,8 +130,9 @@ func IsServerSupposedToBeRunning(serverName string) (bool, error) {
 
 	primaryServerID := db.GetPrimaryServerId()
 	secondaryServerID := db.GetSecondaryServerId()
+	partenariatServerID := db.GetPartenariatServerId()
 
-	return server.ID == primaryServerID || server.ID == secondaryServerID, nil
+	return server.ID == primaryServerID || server.ID == secondaryServerID || server.ID == partenariatServerID, nil
 }
 
 // StartServerTmux starts a Minecraft server in a tmux session
@@ -247,11 +253,14 @@ func GetTmuxSessions() ([]string, error) {
 func GetSessionIDForServer(serverID int) (int, error) {
 	primaryServerID := db.GetPrimaryServerId()
 	secondaryServerID := db.GetSecondaryServerId()
+	partenariatServerID := db.GetPartenariatServerId()
 
 	if serverID == primaryServerID {
 		return 1, nil
 	} else if serverID == secondaryServerID {
 		return 2, nil
+	} else if serverID == partenariatServerID {
+		return 3, nil
 	} else {
 		return -1, fmt.Errorf("SERVER %d IS NOT PRIMARY NOR SECONDARY", serverID)
 	}
