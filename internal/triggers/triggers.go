@@ -61,6 +61,46 @@ func GetTriggers(selectedTriggers []string) []models.Trigger {
 			},
 		},
 		{
+			// This trigger is used to detect when a minecraft server is stopped
+			Name: "MinecraftServerStopped",
+			Condition: func(line string) bool {
+				if isPlayerMessage(line) {
+					return false
+				}
+				match, _ := regexp.MatchString(`.*Stopping the server.*`, line)
+				return match
+			},
+			Action: func(line string, serverID int) {
+				// Server infos
+				server, err := db.GetServerById(serverID)
+				if err != nil {
+					fmt.Println("ERROR WHILE GETTING SERVER BY ID FOR MINECRAFT SERVER STOPPED: " + err.Error())
+					return
+				}
+				discord.SendDiscordEmbed(config.AppConfig.Bots["mineotterBot"], config.AppConfig.DiscordChannels.MinecraftChatChannelID, server.Nom+" viens de fermer !", "Le serveur "+server.Jeu+" est hors ligne !", server.EmbedColor)
+			},
+		},
+		{
+			// This trigger is used to detect when a minecraft server crashes
+			Name: "MinecraftServerCrashed",
+			Condition: func(line string) bool {
+				if isPlayerMessage(line) {
+					return false
+				}
+				match, _ := regexp.MatchString(`.*has crashed.*`, line)
+				return match
+			},
+			Action: func(line string, serverID int) {
+				// Server infos
+				server, err := db.GetServerById(serverID)
+				if err != nil {
+					fmt.Println("ERROR WHILE GETTING SERVER BY ID FOR MINECRAFT SERVER CRASHED: " + err.Error())
+					return
+				}
+				discord.SendDiscordEmbed(config.AppConfig.Bots["mineotterBot"], config.AppConfig.DiscordChannels.MinecraftChatChannelID, server.Nom+" vient de crash !", "Le serveur "+server.Jeu+" est hors ligne !", server.EmbedColor)
+			},
+		},
+		{
 			// This trigger is used to detect when a player joins a Minecraft server
 			Name: "PlayerJoinedMinecraftServer",
 			Condition: func(line string) bool {
@@ -142,7 +182,7 @@ func GetTriggers(selectedTriggers []string) []models.Trigger {
 				// Server infos
 				server, err := db.GetServerById(serverID)
 				if err != nil {
-					fmt.Println("ERROR WHILE GETTING SERVER BY ID FOR MINECRAFT SERVER STOPPED: " + err.Error())
+					fmt.Println("ERROR WHILE GETTING SERVER BY ID FOR MINECRAFT SERVER STARTED: " + err.Error())
 					return
 				}
 				discord.SendDiscordEmbed(config.AppConfig.Bots["multiloutreBot"], config.AppConfig.DiscordChannels.PalworldChatChannelID, server.Nom+" viens d'ouvrir !", "Connectez-vous !\nLe serveur "+server.Jeu+" est en ligne !", server.EmbedColor)
@@ -209,7 +249,7 @@ func isPlayerMessage(line string) bool {
 }
 
 // Regex améliorée pour matcher le format du log
-var deathMessageRegex = regexp.MustCompile(`\[.*?\] \[.*?\]: (.*?) (was slain by|was killed by|drowned|starved to death|blew up|withered away|fell from a high place|fell out of the world)(.*)`)
+var deathMessageRegex = regexp.MustCompile(`\[.*?\] \[.*?\]: (.*?) (was slain by|was run over by|was killed by|drowned|starved to death|blew up|withered away|fell from a high place|fell out of the world)(.*)`)
 
 // Détecte si une ligne est un message de mort et extrait les infos
 func isPlayerDeathMessage(line string) (bool, string, string) {
