@@ -3,7 +3,10 @@ package triggers
 // This file contains the ACTIONS functions for the triggers
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
+	"net/http"
 	"os"
 	"regexp"
 
@@ -28,6 +31,34 @@ func WriteToLogFile(logPath string, line string) error {
 	if err != nil {
 		return fmt.Errorf("ERROR WHILE WRITING TO LOG FILE: %v", err)
 	}
+	return nil
+}
+
+func SendToDiscordWebhook(serverType string, message string) error {
+	// fmt.Println("Sending message to Discord webhook for server type:", serverType)
+	webhookURL := config.AppConfig.DiscordWebhooks[serverType].URL
+	if webhookURL == "" {
+		return fmt.Errorf("ERROR: WEBHOOK URL FOR SERVER TYPE %s NOT FOUND", serverType)
+	}
+
+	payload := map[string]string{
+		"content": message,
+	}
+	jsonPayload, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("ERROR MARSHALING DISCORD PAYLOAD: %v", err)
+	}
+
+	resp, err := http.Post(webhookURL, "application/json", bytes.NewBuffer(jsonPayload))
+	if err != nil {
+		return fmt.Errorf("ERROR WHILE SENDING DISCORD WEBHOOK: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return fmt.Errorf("DISCORD WEBHOOK RETURNED NON-2XX STATUS: %d", resp.StatusCode)
+	}
+
 	return nil
 }
 

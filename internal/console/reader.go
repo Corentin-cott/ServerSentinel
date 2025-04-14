@@ -14,10 +14,11 @@ import (
 
 	"github.com/Corentin-cott/ServeurSentinel/internal/db"
 	"github.com/Corentin-cott/ServeurSentinel/internal/models"
+	"github.com/Corentin-cott/ServeurSentinel/internal/triggers"
 )
 
 // StartFileLogListener starts listening to a log file in real time
-func StartFileLogListener(logFilePath string, triggers []models.Trigger) error {
+func StartFileLogListener(logFilePath string, triggersVar []models.Trigger) error {
 	file, err := os.Open(logFilePath)
 	if err != nil {
 		return fmt.Errorf("ERROR WHILE OPENING LOG FILE NAMED %s : %v", logFilePath, err)
@@ -29,7 +30,7 @@ func StartFileLogListener(logFilePath string, triggers []models.Trigger) error {
 		return fmt.Errorf("ERROR WHILE SEEKING TO THE END OF THE FILE NAMED %s : %v", logFilePath, err)
 	}
 
-	fmt.Printf("✔ Started listening to log file %s with %d triggers.\n", logFilePath, len(triggers))
+	fmt.Printf("✔ Started listening to log file %s with %d triggers.\n", logFilePath, len(triggersVar))
 
 	// Read the file line by line
 	reader := bufio.NewReader(file)
@@ -49,6 +50,8 @@ func StartFileLogListener(logFilePath string, triggers []models.Trigger) error {
 			serverType = "primary"
 		} else if strings.HasSuffix(logFilePath, "2.log") {
 			serverType = "secondary"
+		} else if strings.HasSuffix(logFilePath, "3.log") {
+			serverType = "partner"
 		} else {
 			fmt.Println("✘ Error while determining server type, is the log file name correct?")
 			return nil
@@ -60,12 +63,20 @@ func StartFileLogListener(logFilePath string, triggers []models.Trigger) error {
 			serverID = db.GetPrimaryServerId()
 		} else if serverType == "secondary" {
 			serverID = db.GetSecondaryServerId()
+		} else if serverType == "partner" {
+			serverID = db.GetPartenariatServerId()
+		}
+
+		// We send the log in the appropriate channel by webhook
+		err = triggers.SendToDiscordWebhook(serverType, line)
+		if err != nil {
+			fmt.Println("✘ Error while sending log to Discord webhook: " + err.Error())
 		}
 
 		// Remove leading and trailing whitespaces
 		line = removeANSIcodes(strings.TrimSpace(line))
 		if line != "" {
-			for _, trigger := range triggers {
+			for _, trigger := range triggersVar {
 				if trigger.Condition(line) {
 					trigger.Action(line, serverID)
 				}

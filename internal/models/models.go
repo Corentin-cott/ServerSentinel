@@ -15,6 +15,12 @@ type BotConfig struct {
 	BotToken  string `json:"botToken"`
 }
 
+// DiscordWebhookConfig is a struct that contains the configuration for a Discord webhook
+type DiscordWebhookConfig struct {
+	Enabled bool   `json:"enabled"`
+	URL     string `json:"url"`
+}
+
 // EmbedConfig is a struct that contains the configuration for discord embeds
 type EmbedConfig struct {
 	Title       string `json:"title"`

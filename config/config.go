@@ -10,12 +10,13 @@ import (
 
 // Config is a struct that contains every configuration needed for ServeurSentinel
 type Config struct {
-	Bots              map[string]models.BotConfig `json:"bots"`
-	DiscordChannels   models.DiscordChannels      `json:"discordChannels"`
-	DB                models.DatabaseConfig       `json:"db"`
-	PeriodicEvents    models.PeriodicEventsConfig `json:"periodicEvents"`
-	LogPath           string                      `json:"logPath"`
-	PeriodicEventsMin int                         `json:"periodicEventsMin"`
+	Bots              map[string]models.BotConfig            `json:"bots"`
+	DiscordChannels   models.DiscordChannels                 `json:"discordChannels"`
+	DiscordWebhooks   map[string]models.DiscordWebhookConfig `json:"discordWebhooks"`
+	DB                models.DatabaseConfig                  `json:"db"`
+	PeriodicEvents    models.PeriodicEventsConfig            `json:"periodicEvents"`
+	LogPath           string                                 `json:"logPath"`
+	PeriodicEventsMin int                                    `json:"periodicEventsMin"`
 }
 
 var AppConfig Config
