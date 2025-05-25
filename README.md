@@ -1,4 +1,4 @@
-# Server Sentinel
+# Serveur Sentinel
 
 ## Table of Contents
 
