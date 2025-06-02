@@ -2,3 +2,5 @@ config.json
 daemon
 bin/*
 serverslog/*.log
+.env
+.cache
