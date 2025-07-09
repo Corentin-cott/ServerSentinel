@@ -361,7 +361,7 @@ func GetRconParameters(servertype string) (models.Server, string, string, string
 			serverToSendHost string
 			serverToSendRconPort int
 	)
-	if servertype == "primaire" {
+	if servertype == "primary" {
 		// If the server is primary, we send the message to the secondary server
 		otherServerID := GetSecondaryServerId()
 		serverToSend, err = GetServerById(otherServerID)
@@ -370,7 +370,7 @@ func GetRconParameters(servertype string) (models.Server, string, string, string
 		}
 		serverToSendHost = GetPrimaryServerHost()
 		serverToSendRconPort = GetSecondaryServerRconPort()
-	} else {
+	} else if servertype == "secondary" {
 		// If the server is secondary, we send the message to the primary server
 		otherServerID := GetPrimaryServerId()
 		serverToSend, err = GetServerById(otherServerID)
@@ -379,6 +379,9 @@ func GetRconParameters(servertype string) (models.Server, string, string, string
 		}
 		serverToSendHost = GetPrimaryServerHost()
 		serverToSendRconPort = GetPrimaryServerRconPort()
+	} else {
+		// Not a valid server type or partnership server
+		return models.Server{}, "", "", "", fmt.Errorf("INVALID SERVER TYPE OR PARTNERSHIP SERVER: %s", servertype)
 	}
 
 	// We get the RCON password for the server
