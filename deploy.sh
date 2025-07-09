@@ -27,4 +27,4 @@ sudo -u $USER env GOCACHE="$BUILD_CACHE" GOMODCACHE="$MOD_CACHE" go build -o bin
 echo "Restarting serversentinel service..."
 systemctl restart serveursentinel
 
-echo "Deployment completed successfully!"
+echo "Deployment completed!"

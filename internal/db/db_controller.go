@@ -43,23 +43,6 @@ func ConnectToDatabase() error {
 
 var db *sql.DB
 
-/* -----------------------------------------------------
-Table serveurs {
-    id INT [pk, increment]
-    nom VARCHAR(255) [not null]
-    jeu VARCHAR(255) [not null]
-    version VARCHAR(20) [not null]
-    modpack VARCHAR(255) [default: 'Vanilla']
-    modpack_url VARCHAR(255) [null]
-    nom_monde VARCHAR(255) [default: 'world']
-    embed_color VARCHAR(7) [default: '#000000']
-    path_serv TEXT [not null]
-    start_script VARCHAR(255) [not null]
-    actif BOOLEAN [default: false, not null]
-    global BOOLEAN [default: true, not null]
-}
------------------------------------------------------ */
-
 // GetAllServers returns all the servers from the database
 func GetAllServers() ([]models.Server, error) {
 	query := "SELECT * FROM serveurs"
@@ -72,7 +55,7 @@ func GetAllServers() ([]models.Server, error) {
 	var servers []models.Server
 	for rows.Next() {
 		var serv models.Server
-		if err := rows.Scan(&serv.ID, &serv.Nom, &serv.Jeu, &serv.Version, &serv.Modpack, &serv.ModpackURL, &serv.NomMonde, &serv.EmbedColor, &serv.PathServ, &serv.StartScript, &serv.Actif, &serv.Global); err != nil {
+		if err := rows.Scan(&serv.ID, &serv.Nom, &serv.Jeu, &serv.Version, &serv.Modpack, &serv.ModpackURL, &serv.NomMonde, &serv.EmbedColor, &serv.Contenaire, &serv.Description, &serv.Actif, &serv.Global); err != nil {
 			return nil, fmt.Errorf("FAILED TO SCAN SERVER: %v", err)
 		}
 		servers = append(servers, serv)
@@ -81,7 +64,7 @@ func GetAllServers() ([]models.Server, error) {
 	return servers, nil
 }
 
-// GetAllMineCraftServers returns all the Minecraft servers from the database
+// GetAllMinecraftServers returns all the Minecraft servers from the database
 func GetAllMinecraftServers() ([]models.Server, error) {
 	query := "SELECT * FROM serveurs WHERE jeu = 'Minecraft'"
 	rows, err := db.Query(query)
@@ -93,7 +76,7 @@ func GetAllMinecraftServers() ([]models.Server, error) {
 	var servers []models.Server
 	for rows.Next() {
 		var serv models.Server
-		if err := rows.Scan(&serv.ID, &serv.Nom, &serv.Jeu, &serv.Version, &serv.Modpack, &serv.ModpackURL, &serv.NomMonde, &serv.EmbedColor, &serv.PathServ, &serv.StartScript, &serv.Actif, &serv.Global); err != nil {
+		if err := rows.Scan(&serv.ID, &serv.Nom, &serv.Jeu, &serv.Version, &serv.Modpack, &serv.ModpackURL, &serv.NomMonde, &serv.EmbedColor, &serv.Contenaire, &serv.Description, &serv.Actif, &serv.Global); err != nil {
 			return nil, fmt.Errorf("FAILED TO SCAN MINECRAFT SERVER: %v", err)
 		}
 		servers = append(servers, serv)
@@ -177,12 +160,12 @@ func SetPartenariatServerId(serverID int) error {
 	return nil
 }
 
-// Getter to get all the server informations
+// Getter to get all the server informations by ID
 func GetServerById(serverID int) (models.Server, error) {
 	query := "SELECT * FROM serveurs WHERE id = ?"
 	var serv models.Server
 
-	err := db.QueryRow(query, serverID).Scan(&serv.ID, &serv.Nom, &serv.Jeu, &serv.Version, &serv.Modpack, &serv.ModpackURL, &serv.NomMonde, &serv.EmbedColor, &serv.PathServ, &serv.StartScript, &serv.Actif, &serv.Global)
+	err := db.QueryRow(query, serverID).Scan(&serv.ID, &serv.Nom, &serv.Jeu, &serv.Version, &serv.Modpack, &serv.ModpackURL, &serv.NomMonde, &serv.EmbedColor, &serv.Contenaire, &serv.Description, &serv.Actif, &serv.Global, &serv.Type, &serv.Image)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return serv, fmt.Errorf("SERVER NOT FOUND: %d", serverID)
@@ -198,7 +181,7 @@ func GetServerByName(serverName string) (models.Server, error) {
 	query := "SELECT * FROM serveurs WHERE nom = ?"
 	var serv models.Server
 
-	err := db.QueryRow(query, serverName).Scan(&serv.ID, &serv.Nom, &serv.Jeu, &serv.Version, &serv.Modpack, &serv.ModpackURL, &serv.NomMonde, &serv.EmbedColor, &serv.PathServ, &serv.StartScript, &serv.Actif, &serv.Global)
+	err := db.QueryRow(query, serverName).Scan(&serv.ID, &serv.Nom, &serv.Jeu, &serv.Version, &serv.Modpack, &serv.ModpackURL, &serv.NomMonde, &serv.EmbedColor, &serv.Contenaire, &serv.Description, &serv.Actif, &serv.Global, &serv.Type, &serv.Image)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return serv, fmt.Errorf("SERVER NOT FOUND: %s", serverName)

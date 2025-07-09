@@ -5,10 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"os"
 	"regexp"
-
-	"github.com/Corentin-cott/ServeurSentinel/internal/models"
 )
 
 // GetMinecraftPlayerUUID gets the UUID of a Minecraft player by their username
@@ -68,7 +65,9 @@ func GetMinecraftPlayerHeadURL(playerUUID string) (string, error) {
 }
 
 // GetMinecraftPlayerServerSave gets a list of the Minecraft player UUIDs inside a server directory
+/* Deprecated, need to be updated
 func GetMinecraftPlayerServerUUIDSaves(server models.Server) ([]string, error) {
+
 	fmt.Println("Getting Minecraft player saves for server " + server.Nom + " inside directory " + server.PathServ + server.NomMonde + "/stats ...")
 
 	if server.Jeu != "Minecraft" {
@@ -103,9 +102,12 @@ func GetMinecraftPlayerServerUUIDSaves(server models.Server) ([]string, error) {
 	fmt.Println("Player saves retrieved successfully for server " + server.Nom + " : " + fmt.Sprint(nbPlayerFound) + " players found.")
 	return playerUUIDs, nil
 }
+*/
 
 // GetMinecraftPlayerGameStatistics gets the game statistics of a Minecraft player with his server save
+/* Deprecated, need to be updated
 func GetMinecraftPlayerGameStatistics(playerID int, playerUUID string, server models.Server) (int, string, models.MinecraftPlayerGameStatistics, error) {
+
 	fmt.Println("Getting Minecraft statistics for player " + playerUUID + " in server " + server.Nom + "...")
 
 	if server.Jeu != "Minecraft" {
@@ -172,6 +174,7 @@ func GetMinecraftPlayerGameStatistics(playerID int, playerUUID string, server mo
 	fmt.Println("Stats registered for player " + playerUUID + " in server " + server.Nom)
 	return playerID, playerUUID, playerStats, nil
 }
+*/
 
 func FormatMinecraftUUID(uuid string) string {
 	if len(uuid) != 32 {

@@ -4,14 +4,12 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"strconv"
 	"time"
 
 	"github.com/Corentin-cott/ServeurSentinel/config"
 	"github.com/Corentin-cott/ServeurSentinel/internal/console"
 	"github.com/Corentin-cott/ServeurSentinel/internal/db"
 	periodic "github.com/Corentin-cott/ServeurSentinel/internal/events"
-	"github.com/Corentin-cott/ServeurSentinel/internal/tmux"
 	"github.com/Corentin-cott/ServeurSentinel/internal/triggers"
 	"github.com/spf13/cobra"
 )
@@ -20,61 +18,6 @@ func main() {
 	var rootCmd = &cobra.Command{
 		Use:   "serversentinel",
 		Short: "ServerSentinel manages Minecraft and Palworld servers in tmux sessions.",
-	}
-
-	// Command: serversentinel start-server [id]
-	var startServerCmd = &cobra.Command{
-		Use:   "start-server [id]",
-		Short: "Starts a game server by its ID",
-		Args:  cobra.ExactArgs(1),
-		Run: func(cmd *cobra.Command, args []string) {
-			serverID := args[0]
-			fmt.Printf("Starting server with ID: %s\n", serverID)
-			commandStartStopServerWithID(serverID, "start")
-		},
-	}
-
-	// Command: serversentinel stop-server [id]
-	var stopServerCmd = &cobra.Command{
-		Use:   "stop-server [id]",
-		Short: "Stops a game server by its ID",
-		Args:  cobra.ExactArgs(1),
-		Run: func(cmd *cobra.Command, args []string) {
-			serverID := args[0]
-			fmt.Printf("Stopping server with ID: %s\n", serverID)
-			commandStartStopServerWithID(serverID, "stop")
-		},
-	}
-
-	// Command: serversentinel check-server
-	var checkServerCmd = &cobra.Command{
-		Use:   "check-server",
-		Short: "Check and start servers that are supposed to be running",
-		Args:  cobra.NoArgs,
-		Run: func(cmd *cobra.Command, args []string) {
-			// Because it's a CLI command, we need to load the configuration file
-			err := config.LoadConfig("/opt/serversentinel/config.json")
-			if err != nil {
-				log.Fatalf("FATAL ERROR LOADING CONFIG JSON FILE: %v", err)
-				return
-			}
-
-			// Initialize the connection to the database
-			err = db.ConnectToDatabase()
-			if err != nil {
-				log.Fatalf("FATAL ERROR TESTING DATABASE CONNECTION: %v", err)
-				return
-			}
-
-			// Check if the right tmux servers are running
-			fmt.Printf("Checking and starting servers that are supposed to be running now!\n")
-			message, err := tmux.CheckRunningServers()
-			if err != nil {
-				log.Fatalf("FATAL ERROR CHECKING RUNNING SERVERS: %v", err)
-				return
-			}
-			fmt.Println(message)
-		},
 	}
 
 	// Command: serversentinel daemon
@@ -86,9 +29,6 @@ func main() {
 
 	// Add commands to root
 	rootCmd.AddCommand(daemonCmd)
-	rootCmd.AddCommand(startServerCmd)
-	rootCmd.AddCommand(stopServerCmd)
-	rootCmd.AddCommand(checkServerCmd)
 
 	// Execute CLI
 	if err := rootCmd.Execute(); err != nil {
@@ -147,76 +87,4 @@ func runDaemon(cmd *cobra.Command, args []string) {
 	console.ProcessLogFiles("/opt/serversentinel/serverslog/", triggersList)
 
 	fmt.Println("♦ Server Sentinel daemon stopped.")
-}
-
-// Function to start a server by its ID. This function is use in the CLI command "start-server"
-func commandStartStopServerWithID(serverID string, action string) {
-	// Action can only be "start" or "stop"
-	if action != "start" && action != "stop" {
-		log.Fatalf("FATAL ERROR: INVALID ACTION: %s", action)
-		return
-	}
-
-	// Check if the server ID is a number, and if so, convert it to an integer
-	serverIDInt, err := strconv.Atoi(serverID)
-	if err != nil {
-		log.Fatalf("FATAL ERROR: SERVER ID IS NOT A NUMBER: %v", err)
-		return
-	}
-
-	// Because it's a CLI command, we need to load the configuration file
-	err = config.LoadConfig("/opt/serversentinel/config.json")
-	if err != nil {
-		log.Fatalf("FATAL ERROR LOADING CONFIG JSON FILE: %v", err)
-		return
-	}
-
-	// Initialize the connection to the database
-	err = db.ConnectToDatabase()
-	if err != nil {
-		log.Fatalf("FATAL ERROR TESTING DATABASE CONNECTION: %v", err)
-	}
-
-	// Now we check if the server exists in the database
-	server, err := db.GetServerById(serverIDInt)
-	if err != nil {
-		log.Fatalf("FATAL ERROR GETTING SERVER BY ID: %v", err)
-		return
-	}
-
-	// If the action is "stop", we stop the server
-	if action == "stop" {
-		// Stop the server
-		err = tmux.StopServerTmux(server.Nom)
-		if err != nil {
-			log.Fatalf("FATAL ERROR STOPPING SERVER: %v", err)
-			return
-		}
-		return
-	}
-
-	// If the action is "start", we first check if the server is supposed to be running
-	primaryServerID := db.GetPrimaryServerId()
-	secondaryServerID := db.GetSecondaryServerId()
-	partenariatServerID := db.GetPartenariatServerId()
-
-	if server.ID != primaryServerID && server.ID != secondaryServerID && server.ID != partenariatServerID {
-		// The server is not supposed to be running, then we start it as a secondary server
-		err = db.SetSecondaryServerId(server.ID)
-		if err != nil {
-			log.Fatalf("FATAL ERROR SETTING SECONDARY SERVER ID: %v", err)
-			return
-		}
-	} else {
-		// The server is supposed to be running, then it will be started by "CheckRunningServers" function
-	}
-
-	// Start the server
-	message, err := tmux.CheckRunningServers()
-	if err != nil {
-		log.Fatalf("FATAL ERROR CHECKING RUNNING SERVERS: %v", err)
-		return
-	}
-
-	fmt.Println(message)
 }
