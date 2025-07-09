@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"time"
+	"strconv"
 
 	"github.com/Corentin-cott/ServeurSentinel/config"
 	"github.com/Corentin-cott/ServeurSentinel/internal/models"
@@ -43,23 +44,6 @@ func ConnectToDatabase() error {
 
 var db *sql.DB
 
-/* -----------------------------------------------------
-Table serveurs {
-    id INT [pk, increment]
-    nom VARCHAR(255) [not null]
-    jeu VARCHAR(255) [not null]
-    version VARCHAR(20) [not null]
-    modpack VARCHAR(255) [default: 'Vanilla']
-    modpack_url VARCHAR(255) [null]
-    nom_monde VARCHAR(255) [default: 'world']
-    embed_color VARCHAR(7) [default: '#000000']
-    path_serv TEXT [not null]
-    start_script VARCHAR(255) [not null]
-    actif BOOLEAN [default: false, not null]
-    global BOOLEAN [default: true, not null]
-}
------------------------------------------------------ */
-
 // GetAllServers returns all the servers from the database
 func GetAllServers() ([]models.Server, error) {
 	query := "SELECT * FROM serveurs"
@@ -72,7 +56,7 @@ func GetAllServers() ([]models.Server, error) {
 	var servers []models.Server
 	for rows.Next() {
 		var serv models.Server
-		if err := rows.Scan(&serv.ID, &serv.Nom, &serv.Jeu, &serv.Version, &serv.Modpack, &serv.ModpackURL, &serv.NomMonde, &serv.EmbedColor, &serv.PathServ, &serv.StartScript, &serv.Actif, &serv.Global); err != nil {
+		if err := rows.Scan(&serv.ID, &serv.Nom, &serv.Jeu, &serv.Version, &serv.Modpack, &serv.ModpackURL, &serv.NomMonde, &serv.EmbedColor, &serv.Contenaire, &serv.Description, &serv.Actif, &serv.Global); err != nil {
 			return nil, fmt.Errorf("FAILED TO SCAN SERVER: %v", err)
 		}
 		servers = append(servers, serv)
@@ -81,7 +65,7 @@ func GetAllServers() ([]models.Server, error) {
 	return servers, nil
 }
 
-// GetAllMineCraftServers returns all the Minecraft servers from the database
+// GetAllMinecraftServers returns all the Minecraft servers from the database
 func GetAllMinecraftServers() ([]models.Server, error) {
 	query := "SELECT * FROM serveurs WHERE jeu = 'Minecraft'"
 	rows, err := db.Query(query)
@@ -93,7 +77,7 @@ func GetAllMinecraftServers() ([]models.Server, error) {
 	var servers []models.Server
 	for rows.Next() {
 		var serv models.Server
-		if err := rows.Scan(&serv.ID, &serv.Nom, &serv.Jeu, &serv.Version, &serv.Modpack, &serv.ModpackURL, &serv.NomMonde, &serv.EmbedColor, &serv.PathServ, &serv.StartScript, &serv.Actif, &serv.Global); err != nil {
+		if err := rows.Scan(&serv.ID, &serv.Nom, &serv.Jeu, &serv.Version, &serv.Modpack, &serv.ModpackURL, &serv.NomMonde, &serv.EmbedColor, &serv.Contenaire, &serv.Description, &serv.Actif, &serv.Global); err != nil {
 			return nil, fmt.Errorf("FAILED TO SCAN MINECRAFT SERVER: %v", err)
 		}
 		servers = append(servers, serv)
@@ -144,6 +128,118 @@ func GetPartenariatServerId() int {
 	return serverID
 }
 
+// Getter to get the primary server host
+func GetPrimaryServerHost() string {
+	query := "SELECT host_primaire FROM serveurs_parameters"
+	var serverHost string
+
+	err := db.QueryRow(query).Scan(&serverHost)
+	if err != nil {
+		fmt.Println("FAILED TO GET PRIMARY SERVER:", err)
+		return ""
+	}
+
+	return serverHost
+}
+
+// Getter to get the secondary server host
+func GetSecondaryServerHost() string {
+	query := "SELECT host_secondaire FROM serveurs_parameters"
+	var serverHost string
+
+	err := db.QueryRow(query).Scan(&serverHost)
+	if err != nil {
+		fmt.Println("FAILED TO GET PRIMARY SERVER:", err)
+		return ""
+	}
+
+	return serverHost
+}
+
+// Getter to get the event/partenariat server host
+func GetPartenariatServerHost() string {
+	query := "SELECT host_partenaire FROM serveurs_parameters"
+	var serverHost string
+
+	err := db.QueryRow(query).Scan(&serverHost)
+	if err != nil {
+		fmt.Println("FAILED TO GET PARTENARIAT SERVER:", err)
+		return ""
+	}
+
+	return serverHost
+}
+
+// Getter to get the rcon password
+func GetRconPassword() string {
+	query := "SELECT rcon_password FROM serveurs_parameters"
+	var rconPassword string
+
+	err := db.QueryRow(query).Scan(&rconPassword)
+	if err != nil {
+		fmt.Println("FAILED TO GET PRIMARY SERVER RCON PORT:", err)
+		return ""
+	}
+
+	return rconPassword
+}
+
+// Getter to get the partenariat rcon password
+func GetPartenariatServerRconPassword() string {
+	query := "SELECT rcon_password_partenaire FROM serveurs_parameters"
+	var rconPassword string
+
+	err := db.QueryRow(query).Scan(&rconPassword)
+	if err != nil {
+		fmt.Println("FAILED TO GET PARTENARIAT SERVER RCON PORT:", err)
+		return ""
+	}
+
+	return rconPassword
+}
+
+// Getter to get the primary server rcon port
+func GetPrimaryServerRconPort() int {
+	query := "SELECT rcon_port_primaire FROM serveurs_parameters"
+	var rconPort int
+
+	err := db.QueryRow(query).Scan(&rconPort)
+	if err != nil {
+		fmt.Println("FAILED TO GET PRIMARY SERVER RCON PORT:", err)
+		return -1
+	}
+
+	return rconPort
+}
+
+// Getter to get the secondary server rcon port
+func GetSecondaryServerRconPort() int {
+	query := "SELECT rcon_port_secondaire FROM serveurs_parameters"
+	var rconPort int
+
+	err := db.QueryRow(query).Scan(&rconPort)
+	if err != nil {
+		fmt.Println("FAILED TO GET SECONDARY SERVER RCON PORT:", err)
+		return -1
+	}
+
+	return rconPort
+}
+
+// Getter to get the event/partenariat server rcon port
+func GetPartenariatServerRconPort() int {
+	query := "SELECT rcon_port_partenaire FROM serveurs_parameters"
+	var rconPort int
+
+	err := db.QueryRow(query).Scan(&rconPort)
+	if err != nil {
+		fmt.Println("FAILED TO GET PARTENARIAT SERVER RCON PORT:", err)
+		return -1
+	}
+
+	return rconPort
+}
+
 // Setter to set the primary server
 func SetPrimaryServerId(serverID int) error {
 	query := "UPDATE serveurs_parameters SET id_serv_primaire = ?"
@@ -177,12 +273,12 @@ func SetPartenariatServerId(serverID int) error {
 	return nil
 }
 
-// Getter to get all the server informations
+// Getter to get all the server informations by ID
 func GetServerById(serverID int) (models.Server, error) {
 	query := "SELECT * FROM serveurs WHERE id = ?"
 	var serv models.Server
 
-	err := db.QueryRow(query, serverID).Scan(&serv.ID, &serv.Nom, &serv.Jeu, &serv.Version, &serv.Modpack, &serv.ModpackURL, &serv.NomMonde, &serv.EmbedColor, &serv.PathServ, &serv.StartScript, &serv.Actif, &serv.Global)
+	err := db.QueryRow(query, serverID).Scan(&serv.ID, &serv.Nom, &serv.Jeu, &serv.Version, &serv.Modpack, &serv.ModpackURL, &serv.NomMonde, &serv.EmbedColor, &serv.Contenaire, &serv.Description, &serv.Actif, &serv.Global, &serv.Type, &serv.Image)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return serv, fmt.Errorf("SERVER NOT FOUND: %d", serverID)
@@ -198,7 +294,7 @@ func GetServerByName(serverName string) (models.Server, error) {
 	query := "SELECT * FROM serveurs WHERE nom = ?"
 	var serv models.Server
 
-	err := db.QueryRow(query, serverName).Scan(&serv.ID, &serv.Nom, &serv.Jeu, &serv.Version, &serv.Modpack, &serv.ModpackURL, &serv.NomMonde, &serv.EmbedColor, &serv.PathServ, &serv.StartScript, &serv.Actif, &serv.Global)
+	err := db.QueryRow(query, serverName).Scan(&serv.ID, &serv.Nom, &serv.Jeu, &serv.Version, &serv.Modpack, &serv.ModpackURL, &serv.NomMonde, &serv.EmbedColor, &serv.Contenaire, &serv.Description, &serv.Actif, &serv.Global, &serv.Type, &serv.Image)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return serv, fmt.Errorf("SERVER NOT FOUND: %s", serverName)
@@ -255,6 +351,47 @@ func GetServerColorByName(serverName string) (string, error) {
 	}
 
 	return serverColor, nil
+}
+
+// GetRconParameters retrieves the RCON parameters based on the server
+func GetRconParameters(servertype string) (models.Server, string, string, string, error) {
+	var (
+			err error
+			serverToSend models.Server
+			serverToSendHost string
+			serverToSendRconPort int
+	)
+	if servertype == "primary" {
+		// If the server is primary, we send the message to the secondary server
+		otherServerID := GetSecondaryServerId()
+		serverToSend, err = GetServerById(otherServerID)
+		if err != nil {
+			return models.Server{}, "", "", "", fmt.Errorf("ERROR WHILE GETTING SECONDARY SERVER : %v", err)
+		}
+		serverToSendHost = GetPrimaryServerHost()
+		serverToSendRconPort = GetSecondaryServerRconPort()
+	} else if servertype == "secondary" {
+		// If the server is secondary, we send the message to the primary server
+		otherServerID := GetPrimaryServerId()
+		serverToSend, err = GetServerById(otherServerID)
+		if err != nil {
+			return models.Server{}, "", "", "", fmt.Errorf("ERROR WHILE GETTING PRIMARY SERVER : %v", err)
+		}
+		serverToSendHost = GetPrimaryServerHost()
+		serverToSendRconPort = GetPrimaryServerRconPort()
+	} else {
+		// Not a valid server type or partnership server
+		return models.Server{}, "", "", "", fmt.Errorf("INVALID SERVER TYPE OR PARTNERSHIP SERVER: %s", servertype)
+	}
+
+	// We get the RCON password for the server
+	serverToSendRconPassword := GetRconPassword()
+	if err != nil {
+		return models.Server{}, "", "", "", fmt.Errorf("FAILED TO GET RCON PASSWORD: %v", err)
+	}
+
+	fmt.Println("RCON parameters retrieved successfully for server:", serverToSend.Nom)
+	return serverToSend, serverToSendHost, strconv.Itoa(serverToSendRconPort), serverToSendRconPassword, nil
 }
 
 /* -----------------------------------------------------

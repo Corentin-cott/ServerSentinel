@@ -61,18 +61,20 @@ type Player struct {
 
 // Type Server is a struct that represents a server in the database
 type Server struct {
-	ID          int
-	Nom         string
-	Jeu         string
-	Version     string
-	Modpack     string
-	ModpackURL  string
-	NomMonde    string
-	EmbedColor  string
-	PathServ    string
-	StartScript string
-	Actif       bool
-	Global      bool
+	ID          int    `json:"id"`
+	Nom         string `json:"nom"`
+	Jeu         string `json:"jeu"`
+	Version     string `json:"version"`
+	Modpack     string `json:"modpack"`
+	ModpackURL  string `json:"modpack_url"`
+	NomMonde    string `json:"nom_monde"`
+	EmbedColor  string `json:"embed_color"`
+	Contenaire  string `json:"contenaire"`
+	Description string `json:"description"`
+	Actif       bool   `json:"actif"`
+	Global      bool   `json:"global"`
+	Type        string `json:"type"`
+	Image       string `json:"image"`
 }
 
 // Type MinecraftPlayer is a struct that represents a player in the database (very specific, i know)
