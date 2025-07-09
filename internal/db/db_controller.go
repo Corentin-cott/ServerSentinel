@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"time"
+	"strconv"
 
 	"github.com/Corentin-cott/ServeurSentinel/config"
 	"github.com/Corentin-cott/ServeurSentinel/internal/models"
@@ -350,6 +351,44 @@ func GetServerColorByName(serverName string) (string, error) {
 	}
 
 	return serverColor, nil
+}
+
+// GetRconParameters retrieves the RCON parameters based on the server
+func GetRconParameters(servertype string) (models.Server, string, string, string, error) {
+	var (
+			err error
+			serverToSend models.Server
+			serverToSendHost string
+			serverToSendRconPort int
+	)
+	if servertype == "primaire" {
+		// If the server is primary, we send the message to the secondary server
+		otherServerID := GetSecondaryServerId()
+		serverToSend, err = GetServerById(otherServerID)
+		if err != nil {
+			return models.Server{}, "", "", "", fmt.Errorf("ERROR WHILE GETTING SECONDARY SERVER : %v", err)
+		}
+		serverToSendHost = GetPrimaryServerHost()
+		serverToSendRconPort = GetSecondaryServerRconPort()
+	} else {
+		// If the server is secondary, we send the message to the primary server
+		otherServerID := GetPrimaryServerId()
+		serverToSend, err = GetServerById(otherServerID)
+		if err != nil {
+			return models.Server{}, "", "", "", fmt.Errorf("ERROR WHILE GETTING PRIMARY SERVER : %v", err)
+		}
+		serverToSendHost = GetPrimaryServerHost()
+		serverToSendRconPort = GetPrimaryServerRconPort()
+	}
+
+	// We get the RCON password for the server
+	serverToSendRconPassword := GetRconPassword()
+	if err != nil {
+		return models.Server{}, "", "", "", fmt.Errorf("FAILED TO GET RCON PASSWORD: %v", err)
+	}
+
+	fmt.Println("RCON parameters retrieved successfully for server:", serverToSend.Nom)
+	return serverToSend, serverToSendHost, strconv.Itoa(serverToSendRconPort), serverToSendRconPassword, nil
 }
 
 /* -----------------------------------------------------
