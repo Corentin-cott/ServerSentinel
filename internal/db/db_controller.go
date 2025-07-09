@@ -127,6 +127,118 @@ func GetPartenariatServerId() int {
 	return serverID
 }
 
+// Getter to get the primary server host
+func GetPrimaryServerHost() string {
+	query := "SELECT host_primaire FROM serveurs_parameters"
+	var serverHost string
+
+	err := db.QueryRow(query).Scan(&serverHost)
+	if err != nil {
+		fmt.Println("FAILED TO GET PRIMARY SERVER:", err)
+		return ""
+	}
+
+	return serverHost
+}
+
+// Getter to get the secondary server host
+func GetSecondaryServerHost() string {
+	query := "SELECT host_secondaire FROM serveurs_parameters"
+	var serverHost string
+
+	err := db.QueryRow(query).Scan(&serverHost)
+	if err != nil {
+		fmt.Println("FAILED TO GET PRIMARY SERVER:", err)
+		return ""
+	}
+
+	return serverHost
+}
+
+// Getter to get the event/partenariat server host
+func GetPartenariatServerHost() string {
+	query := "SELECT host_partenaire FROM serveurs_parameters"
+	var serverHost string
+
+	err := db.QueryRow(query).Scan(&serverHost)
+	if err != nil {
+		fmt.Println("FAILED TO GET PARTENARIAT SERVER:", err)
+		return ""
+	}
+
+	return serverHost
+}
+
+// Getter to get the rcon password
+func GetRconPassword() string {
+	query := "SELECT rcon_password FROM serveurs_parameters"
+	var rconPassword string
+
+	err := db.QueryRow(query).Scan(&rconPassword)
+	if err != nil {
+		fmt.Println("FAILED TO GET PRIMARY SERVER RCON PORT:", err)
+		return ""
+	}
+
+	return rconPassword
+}
+
+// Getter to get the partenariat rcon password
+func GetPartenariatServerRconPassword() string {
+	query := "SELECT rcon_password_partenaire FROM serveurs_parameters"
+	var rconPassword string
+
+	err := db.QueryRow(query).Scan(&rconPassword)
+	if err != nil {
+		fmt.Println("FAILED TO GET PARTENARIAT SERVER RCON PORT:", err)
+		return ""
+	}
+
+	return rconPassword
+}
+
+// Getter to get the primary server rcon port
+func GetPrimaryServerRconPort() int {
+	query := "SELECT rcon_port_primaire FROM serveurs_parameters"
+	var rconPort int
+
+	err := db.QueryRow(query).Scan(&rconPort)
+	if err != nil {
+		fmt.Println("FAILED TO GET PRIMARY SERVER RCON PORT:", err)
+		return -1
+	}
+
+	return rconPort
+}
+
+// Getter to get the secondary server rcon port
+func GetSecondaryServerRconPort() int {
+	query := "SELECT rcon_port_secondaire FROM serveurs_parameters"
+	var rconPort int
+
+	err := db.QueryRow(query).Scan(&rconPort)
+	if err != nil {
+		fmt.Println("FAILED TO GET SECONDARY SERVER RCON PORT:", err)
+		return -1
+	}
+
+	return rconPort
+}
+
+// Getter to get the event/partenariat server rcon port
+func GetPartenariatServerRconPort() int {
+	query := "SELECT rcon_port_partenaire FROM serveurs_parameters"
+	var rconPort int
+
+	err := db.QueryRow(query).Scan(&rconPort)
+	if err != nil {
+		fmt.Println("FAILED TO GET PARTENARIAT SERVER RCON PORT:", err)
+		return -1
+	}
+
+	return rconPort
+}
+
 // Setter to set the primary server
 func SetPrimaryServerId(serverID int) error {
 	query := "UPDATE serveurs_parameters SET id_serv_primaire = ?"

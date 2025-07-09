@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"regexp"
+	"strconv"
 
 	"github.com/Corentin-cott/ServeurSentinel/config"
 	"github.com/Corentin-cott/ServeurSentinel/internal/db"
@@ -107,6 +108,7 @@ var gameActionsMap = map[string]func(string) (string, string, string, string, er
 
 // Action when a player message is detected
 func PlayerMessageAction(line string, serverID int) error {
+	/* Let's start by sending the message to Discord */
 	// Server infos
 	server, err := db.GetServerById(serverID)
 	if err != nil {
@@ -142,6 +144,49 @@ func PlayerMessageAction(line string, serverID int) error {
 	if err != nil {
 		return fmt.Errorf("ERROR WHILE SENDING DISCORD EMBED: %v", err)
 	}
+
+	/* Let's now send the message to the secondary Server */
+	// We first need to know if the server is primary or secondary
+	var serverToSend models.Server
+	var serverToSendHost string
+	var serverToSendRconPort int
+	if server.Type == "primaire" {
+		// If the server is primary, we send the message to the secondary server
+		otherServerID := db.GetSecondaryServerId()
+		serverToSend, err = db.GetServerById(otherServerID)
+		if err != nil {
+			return fmt.Errorf("ERROR WHILE GETTING SECONDARY SERVER : %v", err)
+		}
+		serverToSendHost = db.GetPrimaryServerHost()
+		serverToSendRconPort = db.GetSecondaryServerRconPort()
+	} else {
+		// If the server is secondary, we send the message to the primary server
+		otherServerID := db.GetPrimaryServerId()
+		serverToSend, err = db.GetServerById(otherServerID)
+		if err != nil {
+			return fmt.Errorf("ERROR WHILE GETTING PRIMARY SERVER : %v", err)
+		}
+		serverToSendHost = db.GetPrimaryServerHost()
+		serverToSendRconPort = db.GetPrimaryServerRconPort()
+	}
+
+	// We get the RCON password for the server
+	serverToSendRconPassword := db.GetRconPassword()
+	if err != nil {
+		return fmt.Errorf("ERROR WHILE GETTING RCON PASSWORD: %v", err)
+	}
+
+	// Now we can send the message to the server
+	if serverToSend.Jeu == "Minecraft" {
+		resp, err := services.SendRconToMinecraftServer(serverToSendHost, strconv.Itoa(serverToSendRconPort), serverToSendRconPassword, "say <" + playerName + "> " + message)
+		if err != nil {
+			return fmt.Errorf("ERROR WHILE SENDING RCON COMMAND TO MINECRAFT SERVER: %v", err)
+		}
+		fmt.Println("RCON response from Minecraft server:", resp)
+	} else if serverToSend.Jeu == "Palworld" {
+		// Not implemented yet
+	}
+
 	return nil
 }
 

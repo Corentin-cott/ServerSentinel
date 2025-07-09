@@ -6,7 +6,26 @@ import (
 	"io"
 	"net/http"
 	"regexp"
+	"github.com/gorcon/rcon"
 )
+
+// SendRconToMinecraftServer sends a command to a Minecraft server using RCON
+func SendRconToMinecraftServer(serverAddress, rconPort, rconPassword, command string) (string, error) {
+	addr := fmt.Sprintf("%s:%s", serverAddress, rconPort)
+	
+	client, err := rcon.Dial(addr, rconPassword)
+	if err != nil {
+		return "", fmt.Errorf("failed to connect to RCON server: %w", err)
+	}
+	defer client.Close()
+
+	resp, err := client.Execute(command)
+	if err != nil {
+		return "", fmt.Errorf("failed to execute command: %w", err)
+	}
+
+	return resp, nil
+}
 
 // GetMinecraftPlayerUUID gets the UUID of a Minecraft player by their username
 func GetMinecraftPlayerUUID(playerName string) (string, error) {
@@ -63,118 +82,6 @@ func GetMinecraftPlayerHeadURL(playerUUID string) (string, error) {
 	fmt.Println("Player head URL retrieved successfully for player " + playerUUID + " : " + APIUrl)
 	return APIUrl, nil
 }
-
-// GetMinecraftPlayerServerSave gets a list of the Minecraft player UUIDs inside a server directory
-/* Deprecated, need to be updated
-func GetMinecraftPlayerServerUUIDSaves(server models.Server) ([]string, error) {
-
-	fmt.Println("Getting Minecraft player saves for server " + server.Nom + " inside directory " + server.PathServ + server.NomMonde + "/stats ...")
-
-	if server.Jeu != "Minecraft" {
-		return nil, fmt.Errorf("%s IS NOT A MINECRAFT SERVER", server.Nom)
-	}
-
-	// Get the file path
-	serverSavesPath := server.PathServ + server.NomMonde + "/stats"
-
-	// Check if directory exists
-	if _, err := os.Stat(serverSavesPath); os.IsNotExist(err) {
-		return nil, fmt.Errorf("PLAYER DATA DIRECTORY NOT FOUND")
-	}
-
-	// Read directory
-	files, err := os.ReadDir(serverSavesPath)
-	if err != nil {
-		return nil, fmt.Errorf("FAILED TO READ PLAYER DATA DIRECTORY: %v", err)
-	}
-
-	// Extract player UUIDs from file names that are .json files
-	playerUUIDs := make([]string, 0)
-	for _, file := range files {
-		if file.IsDir() || file.Name()[len(file.Name())-5:] != ".json" {
-			continue
-		}
-		playerUUIDs = append(playerUUIDs, file.Name()[:len(file.Name())-5])
-	}
-
-	nbPlayerFound := len(playerUUIDs)
-
-	fmt.Println("Player saves retrieved successfully for server " + server.Nom + " : " + fmt.Sprint(nbPlayerFound) + " players found.")
-	return playerUUIDs, nil
-}
-*/
-
-// GetMinecraftPlayerGameStatistics gets the game statistics of a Minecraft player with his server save
-/* Deprecated, need to be updated
-func GetMinecraftPlayerGameStatistics(playerID int, playerUUID string, server models.Server) (int, string, models.MinecraftPlayerGameStatistics, error) {
-
-	fmt.Println("Getting Minecraft statistics for player " + playerUUID + " in server " + server.Nom + "...")
-
-	if server.Jeu != "Minecraft" {
-		return 0, "", models.MinecraftPlayerGameStatistics{}, fmt.Errorf("%s IS NOT A MINECRAFT SERVER", server.Nom)
-	}
-
-	// Get the file path
-	playerStatsFile := server.PathServ + server.NomMonde + "/stats/" + FormatMinecraftUUID(playerUUID) + ".json"
-
-	// Check if file exists
-	if _, err := os.Stat(playerStatsFile); os.IsNotExist(err) {
-		return 0, "", models.MinecraftPlayerGameStatistics{}, fmt.Errorf("PLAYER STATISTICS FILE NOT FOUND")
-	}
-
-	// Read file
-	playerStatsJSON, err := os.ReadFile(playerStatsFile)
-	if err != nil {
-		return 0, "", models.MinecraftPlayerGameStatistics{}, fmt.Errorf("FAILED TO READ PLAYER STATISTICS FILE: %v", err)
-	}
-
-	// Define a temporary struct to match Minecraft's JSON structure
-	var rawStats struct {
-		Stats struct {
-			Custom  map[string]int `json:"minecraft:custom"`
-			Mined   map[string]int `json:"minecraft:mined"`
-			Killed  map[string]int `json:"minecraft:killed"`
-			Crafted map[string]int `json:"minecraft:crafted"`
-			Used    map[string]int `json:"minecraft:used"`
-			Broken  map[string]int `json:"minecraft:broken"`
-		} `json:"stats"`
-	}
-
-	// Unmarshal JSON into temporary struct
-	if err := json.Unmarshal(playerStatsJSON, &rawStats); err != nil {
-		return 0, "", models.MinecraftPlayerGameStatistics{}, fmt.Errorf("FAILED TO UNMARSHAL PLAYER STATISTICS JSON: %v", err)
-	}
-
-	// Depending on the server version, the stats can be in different formats/keys
-	var play_time int
-	if rawStats.Stats.Custom["minecraft:play_time"] == 0 {
-		play_time = rawStats.Stats.Custom["minecraft:play_one_minute"]
-	} else {
-		play_time = rawStats.Stats.Custom["minecraft:play_time"]
-	}
-
-	// Map extracted data to your model
-	playerStats := models.MinecraftPlayerGameStatistics{
-		TimePlayed:       play_time,
-		Deaths:           rawStats.Stats.Custom["minecraft:deaths"],
-		Kills:            rawStats.Stats.Killed["minecraft:player"],
-		PlayerKills:      rawStats.Stats.Custom["minecraft:player_kills"],
-		BlocksDestroyed:  sumValues(rawStats.Stats.Mined),
-		BlocksPlaced:     sumValues(rawStats.Stats.Used),
-		TotalDistance:    rawStats.Stats.Custom["minecraft:walk_one_cm"],
-		DistanceByFoot:   rawStats.Stats.Custom["minecraft:walk_one_cm"],
-		DistanceByElytra: rawStats.Stats.Custom["minecraft:aviate_one_cm"],
-		DistanceByFlight: rawStats.Stats.Custom["minecraft:fly_one_cm"],
-		ItemsCrafted:     rawStats.Stats.Crafted,
-		ItemsBroken:      rawStats.Stats.Broken,
-		MobsKilled:       rawStats.Stats.Killed,
-		Achievements:     make(map[string]bool),
-	}
-
-	fmt.Println("Stats registered for player " + playerUUID + " in server " + server.Nom)
-	return playerID, playerUUID, playerStats, nil
-}
-*/
 
 func FormatMinecraftUUID(uuid string) string {
 	if len(uuid) != 32 {
