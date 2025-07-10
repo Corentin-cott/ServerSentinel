@@ -3,9 +3,13 @@ package periodic
 import (
 	"fmt"
 	"time"
+	"database/sql"
 
 	"github.com/Corentin-cott/ServerSentinel/config"
 	"github.com/Corentin-cott/ServerSentinel/internal/discord"
+	"github.com/Corentin-cott/ServerSentinel/internal/db"
+	"github.com/Corentin-cott/ServerSentinel/internal/db_stats"
+	"github.com/Corentin-cott/ServerSentinel/internal/minecraft_stats"
 )
 
 // Var for the colors of the Discord embeds
@@ -25,7 +29,29 @@ func TaskServerCheck() {
 
 // Task : Minecraft statistics update
 func TaskMinecraftStatsUpdate() {
-	/* Deprecated, need to be updated */
+	err := db.ConnectToDatabase()
+
+	dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s",
+		config.AppConfig.DB.User,
+		config.AppConfig.DB.Password,
+		config.AppConfig.DB.Host,
+		config.AppConfig.DB.Port,
+		config.AppConfig.DB.Name,
+	)
+
+	sqlDB, err := sql.Open("mysql", dsn)
+	if err != nil {
+		fmt.Errorf("Database connection failed:", err)
+	}
+	defer sqlDB.Close()
+
+	db_stats.Init(sqlDB)
+
+	fmt.Println("🔄 Synchronisation des stats Minecraft...")
+	if err := minecraft_stats.SyncMinecraftStats(); err != nil {
+		fmt.Errorf("Erreur synchronisation:", err)
+	}
+	fmt.Println("✅ Stats Minecraft synchronisées.")
 }
 
 // Start the periodic task
@@ -53,6 +79,7 @@ func StartPeriodicTask(PeriodicEventsMin int) error {
 		// Get the minecraft player game statistics
 		if config.AppConfig.PeriodicEvents.MinecraftStatsEnabled {
 			TaskMinecraftStatsUpdate()
+			discord.SendDiscordEmbed(config.AppConfig.Bots["mineotterBot"], config.AppConfig.DiscordChannels.ServerStatusChannelID, "♟ Minecraft stats saved", "trust me bro", goodColor)
 		} else {
 			fmt.Println("♟ Minecraft statistics update is disabled.")
 		}
