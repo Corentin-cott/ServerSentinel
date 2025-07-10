@@ -4,13 +4,16 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"database/sql"
 	"time"
 
-	"github.com/Corentin-cott/ServeurSentinel/config"
-	"github.com/Corentin-cott/ServeurSentinel/internal/console"
-	"github.com/Corentin-cott/ServeurSentinel/internal/db"
-	periodic "github.com/Corentin-cott/ServeurSentinel/internal/events"
-	"github.com/Corentin-cott/ServeurSentinel/internal/triggers"
+	"github.com/Corentin-cott/ServerSentinel/config"
+	"github.com/Corentin-cott/ServerSentinel/internal/console"
+	"github.com/Corentin-cott/ServerSentinel/internal/db"
+	"github.com/Corentin-cott/ServerSentinel/internal/db_stats"
+	periodic "github.com/Corentin-cott/ServerSentinel/internal/events"
+	"github.com/Corentin-cott/ServerSentinel/internal/triggers"
+	"github.com/Corentin-cott/ServerSentinel/internal/minecraft_stats"
 	"github.com/spf13/cobra"
 )
 
@@ -80,6 +83,8 @@ func runDaemon(cmd *cobra.Command, args []string) {
 	}()
 	fmt.Println("✔ Periodic service started, interval is set to", config.AppConfig.PeriodicEventsMin, "minutes.")
 
+	save_stats_pls()
+
 	// Create a list of triggers and create a wait group
 	// triggersList := triggers.GetTriggers([]string{"MinecraftServerStarted", "MinecraftServerStopped", "PlayerJoinedMinecraftServer"}) // Example with selected triggers
 	triggersList := triggers.GetTriggers([]string{})
@@ -87,4 +92,23 @@ func runDaemon(cmd *cobra.Command, args []string) {
 	console.ProcessLogFiles("/opt/serversentinel/serverslog/", triggersList)
 
 	fmt.Println("♦ Server Sentinel daemon stopped.")
+}
+
+func save_stats_pls() {
+	err := db.ConnectToDatabase()
+
+	dsn := "serveursentinel:8CdKBKiM8KD!4spf?!xEtTd$9DymczgShSM5eycn@tcp(antredesloutres.fr:32768)/adl_global?parseTime=true"
+	sqlDB, err := sql.Open("mysql", dsn)
+	if err != nil {
+		log.Fatal("Database connection failed:", err)
+	}
+	defer sqlDB.Close()
+
+	db_stats.Init(sqlDB)
+
+	fmt.Println("🔄 Synchronisation des stats Minecraft...")
+	if err := minecraft_stats.SyncMinecraftStats(); err != nil {
+		log.Fatal("Erreur synchronisation:", err)
+	}
+	fmt.Println("✅ Stats Minecraft synchronisées.")
 }

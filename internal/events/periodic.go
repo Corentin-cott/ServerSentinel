@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/Corentin-cott/ServeurSentinel/config"
-	"github.com/Corentin-cott/ServeurSentinel/internal/discord"
+	"github.com/Corentin-cott/ServerSentinel/config"
+	"github.com/Corentin-cott/ServerSentinel/internal/discord"
 )
 
 // Var for the colors of the Discord embeds
