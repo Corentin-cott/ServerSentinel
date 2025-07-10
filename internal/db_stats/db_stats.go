@@ -4,7 +4,8 @@ import (
 	"database/sql"
 	"fmt"
 	"strings"
-    "encoding/json"
+	"net/http"
+  "encoding/json"
 
 	"github.com/Corentin-cott/ServerSentinel/internal/models"
 	"github.com/Corentin-cott/ServerSentinel/internal/db"
@@ -36,6 +37,28 @@ func GetAllMinecraftServers() ([]models.Server, error) {
 }
 
 func SavePlayerStats(stat models.PlayerStats) error {
+	if stat.UUID == "" {
+		return fmt.Errorf("⚠️ UUID vide pour le joueur, impossible d'enregistrer les stats")
+	}
+
+	uuid := strings.ReplaceAll(stat.UUID, "-", "") // Mojang n'accepte pas les tirets
+
+	// Vérifie que le compte existe via l’API Mojang
+	resp, err := http.Get("https://sessionserver.mojang.com/session/minecraft/profile/" + uuid)
+	if err != nil {
+		return fmt.Errorf("❌ Erreur réseau : %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusNotFound {
+		return fmt.Errorf("❌ Aucun joueur trouvé avec l’UUID %s", stat.UUID)
+	} else if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("❌ Erreur API Mojang (status %d)", resp.StatusCode)
+	}
+
+	// Si tout va bien, l’UUID est valide
+	fmt.Println("✅ UUID Minecraft valide :", stat.UUID)
+
 	//fmt.Printf("\nVoici la longueur des stats pour le joueur %s :\n", stat)
 	playerID, err := db.CheckAndInsertPlayerWithPlayerUUID(stat.UUID, stat.ServeurID, "idk")
 	if err != nil {
