@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/Corentin-cott/ServeurSentinel/internal/models"
+	"github.com/Corentin-cott/ServerSentinel/internal/models"
 )
 
 // Config is a struct that contains every configuration needed for ServeurSentinel

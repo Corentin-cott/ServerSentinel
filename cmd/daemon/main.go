@@ -6,11 +6,11 @@ import (
 	"os"
 	"time"
 
-	"github.com/Corentin-cott/ServeurSentinel/config"
-	"github.com/Corentin-cott/ServeurSentinel/internal/console"
-	"github.com/Corentin-cott/ServeurSentinel/internal/db"
-	periodic "github.com/Corentin-cott/ServeurSentinel/internal/events"
-	"github.com/Corentin-cott/ServeurSentinel/internal/triggers"
+	"github.com/Corentin-cott/ServerSentinel/config"
+	"github.com/Corentin-cott/ServerSentinel/internal/console"
+	"github.com/Corentin-cott/ServerSentinel/internal/db"
+	periodic "github.com/Corentin-cott/ServerSentinel/internal/events"
+	"github.com/Corentin-cott/ServerSentinel/internal/triggers"
 	"github.com/spf13/cobra"
 )
 
@@ -79,6 +79,8 @@ func runDaemon(cmd *cobra.Command, args []string) {
 		}
 	}()
 	fmt.Println("✔ Periodic service started, interval is set to", config.AppConfig.PeriodicEventsMin, "minutes.")
+
+	periodic.TaskMinecraftStatsUpdate()
 
 	// Create a list of triggers and create a wait group
 	// triggersList := triggers.GetTriggers([]string{"MinecraftServerStarted", "MinecraftServerStopped", "PlayerJoinedMinecraftServer"}) // Example with selected triggers

@@ -7,9 +7,9 @@ import (
 	"time"
 	"strconv"
 
-	"github.com/Corentin-cott/ServeurSentinel/config"
-	"github.com/Corentin-cott/ServeurSentinel/internal/models"
-	"github.com/Corentin-cott/ServeurSentinel/internal/services"
+	"github.com/Corentin-cott/ServerSentinel/config"
+	"github.com/Corentin-cott/ServerSentinel/internal/models"
+	"github.com/Corentin-cott/ServerSentinel/internal/services"
 	_ "github.com/go-sql-driver/mysql"
 )
 

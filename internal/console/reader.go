@@ -12,9 +12,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Corentin-cott/ServeurSentinel/internal/db"
-	"github.com/Corentin-cott/ServeurSentinel/internal/models"
-	"github.com/Corentin-cott/ServeurSentinel/internal/triggers"
+	"github.com/Corentin-cott/ServerSentinel/internal/db"
+	"github.com/Corentin-cott/ServerSentinel/internal/models"
+	"github.com/Corentin-cott/ServerSentinel/internal/triggers"
 )
 
 // StartFileLogListener starts listening to a log file in real time

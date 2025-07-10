@@ -10,11 +10,11 @@ import (
 	"os"
 	"regexp"
 
-	"github.com/Corentin-cott/ServeurSentinel/config"
-	"github.com/Corentin-cott/ServeurSentinel/internal/db"
-	"github.com/Corentin-cott/ServeurSentinel/internal/discord"
-	"github.com/Corentin-cott/ServeurSentinel/internal/models"
-	"github.com/Corentin-cott/ServeurSentinel/internal/services"
+	"github.com/Corentin-cott/ServerSentinel/config"
+	"github.com/Corentin-cott/ServerSentinel/internal/db"
+	"github.com/Corentin-cott/ServerSentinel/internal/discord"
+	"github.com/Corentin-cott/ServerSentinel/internal/models"
+	"github.com/Corentin-cott/ServerSentinel/internal/services"
 )
 
 // WriteToLogFile writes a line to a log file

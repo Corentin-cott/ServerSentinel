@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Corentin-cott/ServeurSentinel/internal/models"
+	"github.com/Corentin-cott/ServerSentinel/internal/models"
 )
 
 // SendDiscordMessage() sends a message to a Discord channel

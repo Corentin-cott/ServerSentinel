@@ -106,3 +106,9 @@ type Trigger struct {
 	Action    func(string, int) // Function to execute when the condition is met
 	ServerID  int               // ID of the server
 }
+
+type PlayerStats struct {
+	UUID      string
+	ServeurID int
+	Stats     map[string]int
+}

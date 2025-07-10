@@ -26,6 +26,17 @@
     "minecraftChatChannelID": "# Chat channel between minecraft and discord",
     "palworldChatChannelID": "# Chat channel between palworld and discord"
   },
+  "discordWebhooks": {
+    "primary": {
+      "URL": ""
+    },
+    "secondary": {
+      "URL": ""
+    },
+    "partner": {
+      "URL": ""
+    }
+  },
   "periodicEvents": {
     "serversCheckEnabled": true,
     "minecraftStatsEnabled": false
