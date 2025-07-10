@@ -37,12 +37,11 @@ func GetAllMinecraftServers() ([]models.Server, error) {
 
 func SavePlayerStats(stat models.PlayerStats) error {
 	//fmt.Printf("\nVoici la longueur des stats pour le joueur %s :\n", stat)
-	player, err := db.GetPlayerByUUID(stat.UUID)
+	playerID, err := db.CheckAndInsertPlayerWithPlayerUUID(stat.UUID, stat.ServeurID, "idk")
 	if err != nil {
 		return fmt.Errorf("❌ Erreur lors de la récupération du joueur avec UUID %s: %v\n", stat.UUID, err)
 	}
-	compteID := player.ID
-	if compteID == 0 {
+	if playerID == 0 {
 		return fmt.Errorf("⚠️ UUID %s non trouvé dans la base de données, impossible d'enregistrer les stats de %s\n", stat.UUID)
 	}
 
