@@ -4,3 +4,4 @@ bin/*
 serverslog/*.log
 .env
 .cache
+.idea
