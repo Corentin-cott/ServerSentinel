@@ -57,6 +57,7 @@ type Player struct {
 	CompteID      string
 	PremiereCo    string
 	DerniereCo    string
+	Playername    string
 }
 
 // Type Server is a struct that represents a server in the database

@@ -4,8 +4,8 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"time"
 	"strconv"
+	"time"
 
 	"github.com/Corentin-cott/ServerSentinel/config"
 	"github.com/Corentin-cott/ServerSentinel/internal/models"
@@ -356,10 +356,10 @@ func GetServerColorByName(serverName string) (string, error) {
 // GetRconParameters retrieves the RCON parameters based on the server
 func GetRconParameters(servertype string) (models.Server, string, string, string, error) {
 	var (
-			err error
-			serverToSend models.Server
-			serverToSendHost string
-			serverToSendRconPort int
+		err                  error
+		serverToSend         models.Server
+		serverToSendHost     string
+		serverToSendRconPort int
 	)
 	if servertype == "primary" {
 		// If the server is primary, we send the message to the secondary server
@@ -424,6 +424,7 @@ Table joueurs {
     compte_id VARCHAR(255) [pk]
     premiere_co DATETIME
     derniere_co DATETIME
+	playername	VARCHAR(100)
 }
 ----------------------------------------------------- */
 
@@ -446,7 +447,7 @@ func GetAllMinecraftPlayers() ([]models.Player, error) {
 		var player models.Player
 		var utilisateurID sql.NullInt64 // Use sql.NullInt64 to handle NULL values
 
-		if err := rows.Scan(&player.ID, &utilisateurID, &player.Jeu, &player.CompteID, &player.PremiereCo, &player.DerniereCo); err != nil {
+		if err := rows.Scan(&player.ID, &utilisateurID, &player.Jeu, &player.CompteID, &player.PremiereCo, &player.DerniereCo, &player.Playername); err != nil {
 			return nil, fmt.Errorf("FAILED TO SCAN MINECRAFT PLAYER: %v", err)
 		}
 
@@ -794,6 +795,29 @@ func UpdateMinecraftPlayerGameStatistics(serverID int, playerUUID string, player
 
 	return nil
 }
+
+/* -----------------------------------------------------
+Table badges_joueurs {
+  id INT [pk, increment]
+  joueur_id INT [ref: > joueurs.id, not null]
+  badge_id INT [ref: > badges.id, not null]
+  date_recu DATETIME [not null]
+}
+----------------------------------------------------- */
+
+func AddBadgeToPlayer(joueurID int, badgeID int) error {
+	query := "INSERT INTO badges_joueurs (joueur_id, badge_id, date_recu) VALUES (?, ?, ?)"
+	_, err := db.Exec(query, joueurID, badgeID, GetGoodDatetime())
+	if err != nil {
+		return fmt.Errorf("FAILED TO ADD BADGE TO PLAYER: %v", err)
+	}
+
+	fmt.Println("Badge added to ", joueurID)
+
+	return nil
+}
+
+/* Misc */
 
 func GetGoodDatetime() time.Time {
 	// Time of now + 1 hour. Not good practice, but it's a quick fix. Again. Yeah.

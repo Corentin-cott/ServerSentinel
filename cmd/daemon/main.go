@@ -80,7 +80,12 @@ func runDaemon(cmd *cobra.Command, args []string) {
 	}()
 	fmt.Println("✔ Periodic service started, interval is set to", config.AppConfig.PeriodicEventsMin, "minutes.")
 
-	periodic.TaskMinecraftStatsUpdate()
+	fmt.Println("Start checking player badges")
+	err = periodic.TaskCheckMinecraftBadges()
+	if err != nil {
+		fmt.Println("ERROR :", err)
+	}
+	fmt.Println("End checking player badges")
 
 	// Create a list of triggers and create a wait group
 	// triggersList := triggers.GetTriggers([]string{"MinecraftServerStarted", "MinecraftServerStopped", "PlayerJoinedMinecraftServer"}) // Example with selected triggers

@@ -1,14 +1,15 @@
 package periodic
 
 import (
+	"database/sql"
 	"fmt"
 	"time"
-	"database/sql"
 
 	"github.com/Corentin-cott/ServerSentinel/config"
-	"github.com/Corentin-cott/ServerSentinel/internal/discord"
+	"github.com/Corentin-cott/ServerSentinel/internal/badges"
 	"github.com/Corentin-cott/ServerSentinel/internal/db"
 	"github.com/Corentin-cott/ServerSentinel/internal/db_stats"
+	"github.com/Corentin-cott/ServerSentinel/internal/discord"
 	"github.com/Corentin-cott/ServerSentinel/internal/minecraft_stats"
 )
 
@@ -52,6 +53,24 @@ func TaskMinecraftStatsUpdate() {
 		fmt.Errorf("Erreur synchronisation:", err)
 	}
 	fmt.Println("✅ Stats Minecraft synchronisées.")
+}
+
+// Task : Check if players should have certain badges
+func TaskCheckMinecraftBadges() error {
+	minecraftPlayers, err := db.GetAllMinecraftPlayers()
+	if err != nil {
+		return fmt.Errorf("AN ERROR OCCURED WHILE GETTING ALL PLAYERS : %v", err)
+	}
+
+	for _, player := range minecraftPlayers {
+		err := badges.CheckVanillaPlayed(player.CompteID, true)
+		if err != nil {
+			return fmt.Errorf("AN ERROR OCCURED WHILE GIVING A BADGE : %v", err)
+		}
+		fmt.Printf("Badge added to player")
+	}
+
+	return nil
 }
 
 // Start the periodic task
